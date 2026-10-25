@@ -1,6 +1,8 @@
-# loveyong-opengal
+# loveyong-starrygal
 
-免费开源的 Windows Galgame 启动器。用透明玻璃界面整理本地游戏，收藏喜欢的故事。
+StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服务，基于 KoiPage支持本地游戏与 Steam 游戏库
+
+当前版本已实现本地游戏管理与启动；游戏下载服务尚待后续接口接入。
 
 本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.1.0**，修改日期为 **2026-10-25**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
 
@@ -55,8 +57,8 @@
 
 需要 Windows x64、Node.js 24、项目声明版本的 pnpm。运行桌面版还需要 Rust stable、MSVC C++ 构建工具、Windows SDK 与 WebView2。
 
-    git clone https://github.com/loveyong07/loveyong-opengal.git
-    cd loveyong-opengal
+    git clone https://github.com/loveyong07/loveyong-starrygal.git
+    cd loveyong-starrygal
     corepack enable
     pnpm install --frozen-lockfile
     pnpm dev
@@ -74,7 +76,7 @@
     pnpm check:ipc
     cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
 
-安装包发布位置：[GitHub Releases](https://github.com/loveyong07/loveyong-opengal/releases)。更新按钮打开下载页面，不会直接覆盖安装其他项目的版本。
+安装包发布位置：[GitHub Releases](https://github.com/loveyong07/loveyong-starrygal/releases)。更新按钮打开下载页面，不会直接覆盖安装其他项目的版本。
 
 ## 源码结构
 

@@ -1,7 +1,7 @@
 import type { Game, GameStatus } from "../../types/game.ts";
 
-export const PROJECT_NAME = "loveyong-opengal";
-export const REPOSITORY_URL = "https://github.com/loveyong07/loveyong-opengal";
+export const PROJECT_NAME = "loveyong-starrygal";
+export const REPOSITORY_URL = "https://github.com/loveyong07/loveyong-starrygal";
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
 export const NOTICE_VERSION = "1";

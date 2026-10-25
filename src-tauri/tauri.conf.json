@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "loveyong-opengal",
+  "productName": "loveyong-starrygal",
   "version": "0.1.0",
   "identifier": "top.loveyong.opengal",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "loveyong-opengal · 你的故事收藏馆",
+        "title": "loveyong-starrygal · 你的故事收藏馆",
         "width": 1600,
         "height": 900,
         "minWidth": 1100,

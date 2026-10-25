@@ -145,9 +145,9 @@ mod windows_guard {
 
     /// Show the notice without initializing Tauri, a second tray or the database.
     fn show_duplicate_notice() {
-        let title: Vec<u16> = "OpenGal KoiPage\0".encode_utf16().collect();
+        let title: Vec<u16> = "StarryGal\0".encode_utf16().collect();
         let message: Vec<u16> =
-            "OpenGal KoiPage 已在运行，只能同时运行一个应用。\n\n点击“确定”唤出已有窗口，继续使用。\0"
+            "StarryGal 已在运行，只能同时运行一个应用。\n\n点击“确定”唤出已有窗口，继续使用。\0"
                 .encode_utf16()
                 .collect();
         // No Tauri window belongs to this process. Both UTF-16 buffers remain

@@ -34,8 +34,8 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
-    let show = MenuItem::with_id(app, "tray-show", "显示 OpenGal", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "tray-quit", "退出 OpenGal", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "tray-show", "显示 StarryGal", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "tray-quit", "退出 StarryGal", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
     let Some(icon) = app.default_window_icon().cloned() else {
@@ -45,7 +45,7 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("opengal-tray")
         .icon(icon)
-        .tooltip("loveyong-opengal")
+        .tooltip("loveyong-starrygal")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

@@ -1,4 +1,4 @@
-name: OpenGal checks
+name: StarryGal checks
 
 on:
   push:

@@ -1,5 +1,5 @@
 {
-  "name": "loveyong-opengal",
+  "name": "loveyong-starrygal",
   "private": true,
   "version": "0.1.0",
   "license": "GPL-3.0-only",
@@ -51,5 +51,5 @@
     "typescript": "5.9.3",
     "vite": "5.4.21"
   },
-  "description": "A free, open-source glass-style Galgame launcher"
+  "description": "StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服务，基于 KoiPage支持本地游戏与 Steam 游戏库"
 }

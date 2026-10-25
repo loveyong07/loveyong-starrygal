@@ -2,12 +2,12 @@
 import { version } from "../../package.json";
 
 const GITHUB_USERNAME = "loveyong07";
-const REPOSITORY_URL = "https://github.com/loveyong07/loveyong-opengal";
+const REPOSITORY_URL = "https://github.com/loveyong07/loveyong-starrygal";
 
 export const BRAND = {
-  name: "loveyong-opengal",
-  latinName: "OpenGal",
-  title: "loveyong-opengal · 你的故事收藏馆",
+  name: "loveyong-starrygal",
+  latinName: "StarryGal",
+  title: "loveyong-starrygal · 你的故事收藏馆",
   tagline: "把故事，收进日常。",
   icon: "/brand/opengal.png",
   githubUsername: GITHUB_USERNAME,

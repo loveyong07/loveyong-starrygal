@@ -116,9 +116,9 @@ test("notice is first-run only and links use the final project identity", () => 
     NOTICE_TEXT,
     "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入",
   );
-  assert.equal(PROJECT_NAME, "loveyong-opengal");
+  assert.equal(PROJECT_NAME, "loveyong-starrygal");
   assert.equal(
     REPOSITORY_URL,
-    "https://github.com/loveyong07/loveyong-opengal",
+    "https://github.com/loveyong07/loveyong-starrygal",
   );
 });

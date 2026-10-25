@@ -1,8 +1,8 @@
 [package]
-name = "loveyong-opengal"
+name = "loveyong-starrygal"
 version = "0.1.0"
 license = "GPL-3.0-only"
-description = "loveyong-opengal - free open-source Galgame launcher"
+description = "loveyong-starrygal - free open-source Galgame launcher"
 authors = ["loveyong07", "morilove37 (KoiPage upstream)"]
 edition = "2024"
 

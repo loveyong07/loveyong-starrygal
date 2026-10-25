@@ -699,7 +699,7 @@ export default function GalgameApp() {
           </button>
         </div>
         <div className="gg-version">
-          <span>OPEN GAL</span>
+          <span>STARRY GAL</span>
           <span>v{BRAND.version}</span>
         </div>
       </aside>
@@ -1097,7 +1097,7 @@ export default function GalgameApp() {
             </>
           )}
           <footer className="gg-page-footer">
-            <span>LOVEYONG-OPENGAL · FREE & OPEN SOURCE</span>
+            <span>LOVEYONG-STARRYGAL · FREE & OPEN SOURCE</span>
             <span>
               <SparkleIcon size={9} weight="fill" />
               慢慢收藏，慢慢喜欢。
