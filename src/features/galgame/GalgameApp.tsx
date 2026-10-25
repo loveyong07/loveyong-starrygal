@@ -63,7 +63,6 @@ import {
   CONTACT_URL,
   DOWNLOAD_URL,
   NOTICE_VERSION,
-  PROJECT_NAME,
   REPOSITORY_URL,
   completionPatch,
   normalizedPath,
@@ -225,7 +224,7 @@ export default function GalgameApp() {
   }, [route]);
   useEffect(() => {
     document.documentElement.className = "galgame-theme";
-    document.title = PROJECT_NAME + " · 你的故事收藏馆";
+    document.title = BRAND.title;
     let active = true;
     void readPreference("noticeSeen")
       .then((seen) => {
@@ -627,14 +626,16 @@ export default function GalgameApp() {
       )}
       {desktop && <DesktopSync />}
       <aside className="gg-sidebar gg-glass">
-        <NavLink to="/library" className="gg-brand" aria-label="Galgame 游戏库">
+        <NavLink
+          to="/library"
+          className="gg-brand"
+          aria-label={BRAND.name + " 游戏库"}
+        >
           <span className="gg-brand-icon">
             <img src={BRAND.icon} alt="" width={50} height={50} />
           </span>
           <span>
-            <strong>
-              Galgame<span className="gg-brand-dot">.</span>
-            </strong>
+            <strong>{BRAND.name}</strong>
             <small>LOVEYONG · OPEN SOURCE</small>
           </span>
         </NavLink>
@@ -699,7 +700,7 @@ export default function GalgameApp() {
           </button>
         </div>
         <div className="gg-version">
-          <span>STARRY GAL</span>
+          <span>{BRAND.name}</span>
           <span>v{BRAND.version}</span>
         </div>
       </aside>
@@ -1097,7 +1098,7 @@ export default function GalgameApp() {
             </>
           )}
           <footer className="gg-page-footer">
-            <span>LOVEYONG-STARRYGAL · FREE & OPEN SOURCE</span>
+            <span>{BRAND.name} · FREE & OPEN SOURCE</span>
             <span>
               <SparkleIcon size={9} weight="fill" />
               慢慢收藏，慢慢喜欢。

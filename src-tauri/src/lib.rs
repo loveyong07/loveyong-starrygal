@@ -45,7 +45,7 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("opengal-tray")
         .icon(icon)
-        .tooltip("loveyong-starrygal")
+        .tooltip("StarryGal")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

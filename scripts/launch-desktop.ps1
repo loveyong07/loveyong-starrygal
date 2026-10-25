@@ -2,7 +2,7 @@ param([string]$NodePath = '')
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$appPath = Join-Path $projectRoot 'src-tauri\target\debug\loveyong-starrygal.exe'
+$appPath = Join-Path $projectRoot 'src-tauri\target\debug\StarryGal.exe'
 $vitePath = Join-Path $projectRoot 'node_modules\vite\bin\vite.js'
 $mutex = New-Object System.Threading.Mutex($false, 'Local\loveyong-starrygalDesktopLauncher')
 $ownsMutex = $false
@@ -10,7 +10,7 @@ $ownsMutex = $false
 function Test-AppFrontend {
     try {
         $page = Invoke-WebRequest -Uri 'http://127.0.0.1:1420' -UseBasicParsing -TimeoutSec 2
-        return $page.Content.Contains('/src/main.tsx') -and $page.Content.Contains('loveyong-starrygal')
+        return $page.Content.Contains('/src/main.tsx') -and $page.Content.Contains('StarryGal')
     } catch {
         return $false
     }
@@ -19,7 +19,7 @@ function Test-AppFrontend {
 try {
     try { $ownsMutex = $mutex.WaitOne(30000) }
     catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }
-    if (-not $ownsMutex) { throw 'Another loveyong-starrygal launch is still in progress. Please try again shortly.' }
+    if (-not $ownsMutex) { throw 'Another StarryGal launch is still in progress. Please try again shortly.' }
     if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) {
         throw 'The development app is missing. Build the desktop app before using this shortcut.'
     }
@@ -47,7 +47,7 @@ try {
     Start-Process -FilePath $appPath -WorkingDirectory $projectRoot -WindowStyle Normal | Out-Null
 } catch {
     Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'loveyong-starrygal', 'OK', 'Error') | Out-Null
+    [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'StarryGal', 'OK', 'Error') | Out-Null
     exit 1
 } finally {
     if ($ownsMutex) { $mutex.ReleaseMutex() }

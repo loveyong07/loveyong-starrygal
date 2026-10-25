@@ -6,6 +6,10 @@ description = "loveyong-starrygal - free open-source Galgame launcher"
 authors = ["loveyong07", "morilove37 (KoiPage upstream)"]
 edition = "2024"
 
+[[bin]]
+name = "StarryGal"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]

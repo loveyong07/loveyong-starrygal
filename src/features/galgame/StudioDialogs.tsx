@@ -14,7 +14,6 @@ import {
   CheckIcon,
   CloudSlashIcon,
   FolderOpenIcon,
-  GameControllerIcon,
   GithubLogoIcon,
   ImageSquareIcon,
   MegaphoneIcon,
@@ -31,7 +30,7 @@ import {
   titleFromPath,
   type Appearance,
 } from "./library";
-import { NOTICE_TEXT, PROJECT_NAME, type LibraryGame } from "./model";
+import { NOTICE_TEXT, type LibraryGame } from "./model";
 import type { DiscoveredGame } from "./discovery";
 
 export function Modal({
@@ -99,7 +98,7 @@ export function NoticeDialog({ close }: { close: () => void }) {
   return (
     <Modal
       title="公告"
-      subtitle={PROJECT_NAME + " · 欢迎来到你的故事收藏馆"}
+      subtitle={BRAND.name + " · 欢迎来到你的故事收藏馆"}
       close={close}
     >
       <div className="gg-notice-symbol">
@@ -304,12 +303,12 @@ export function SourceDialog({
 export function AboutDialog({ close }: { close: () => void }) {
   return (
     <Modal
-      title={PROJECT_NAME}
+      title={BRAND.name}
       subtitle="A little place for your favorite worlds."
       close={close}
     >
       <div className="gg-about-mark">
-        <GameControllerIcon size={43} weight="duotone" />
+        <img src={BRAND.icon} alt="StarryGal 星月图标" width={64} height={64} />
         <div>
           <strong>让喜欢的故事，有自己的位置。</strong>
           <p>Tauri 2 · Rust · React · TypeScript · SQLite</p>

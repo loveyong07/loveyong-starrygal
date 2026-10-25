@@ -1,10 +1,24 @@
-# loveyong-starrygal
+<p align="center">
+  <img src="./public/brand/starrygal-logo.png" alt="StarryGal 星月标志" width="720" />
+</p>
+
+<h1 align="center">StarryGal</h1>
+
+<p align="center">把故事，收进日常。</p>
+
+<p align="center">
+  <a href="https://github.com/loveyong07/loveyong-starrygal/releases">下载与更新</a> ·
+  <a href="https://loveyong07.top/contact">反馈与联系</a> ·
+  <a href="#开发运行">开发运行</a>
+</p>
 
 StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服务，基于 KoiPage支持本地游戏与 Steam 游戏库
 
 当前版本已实现本地游戏管理与启动；游戏下载服务尚待后续接口接入。
 
-本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.1.0**，修改日期为 **2026-10-25**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
+应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用图标采用标志左侧的星月图案。
+
+本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.1.0**，修改日期为 **2026-10-26**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
 
 ## 功能
 
@@ -74,7 +88,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
     pnpm build
     pnpm test
     pnpm check:ipc
-    cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+    cargo test --manifest-path src-tauri/Cargo.toml --lib --bins --locked
 
 安装包发布位置：[GitHub Releases](https://github.com/loveyong07/loveyong-starrygal/releases)。更新按钮打开下载页面，不会直接覆盖安装其他项目的版本。
 
@@ -93,7 +107,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 - **[KunMoe/kun-touchgal-next](https://github.com/KunMoe/kun-touchgal-next)**：TouchGal 数据结构与接口设计参考。当前未接入其服务，也不包含其社区数据库或游戏资源。
 - [Phosphor Icons](https://github.com/phosphor-icons/react)、[Manrope](https://github.com/sharanda/manrope)、Tauri、React 及其他依赖的维护者。
 
-新的应用图标与默认背景通过 ImageGen 生成。上游保留的角色素材归各自原权利方所有，代码许可不改变素材权利。游戏封面、简介和影片归各自权利方所有。
+StarryGal 标志由使用者提供，应用图标采用其左侧星月图案，README 展示完整标志。透明素材经 ImageGen 处理，默认背景通过 ImageGen 生成。上游保留的角色素材归各自原权利方所有，代码许可不改变素材权利。游戏封面、简介和影片归各自权利方所有。
 
 ## 许可与第三方组件
 
