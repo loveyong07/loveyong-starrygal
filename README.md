@@ -121,14 +121,4 @@ StarryGal 标志由使用者提供，应用图标采用其左侧星月图案，R
 
 Locale Emulator、Magpie、LunaTranslator 和 7-Zip 分别保留各自的 COPYING、LICENSE、NOTICE 与必要的对应源码，位于 src-tauri/resources/。这些是构建和合规分发需要的文件，应与相关代码一起保留。
 
-## 发布文件约定
-
-上传源码时保留：
-
-- 这一份 README、LICENSE、实际源码、锁文件、必要资源、测试和 CI。
-
-以下内容不进入发布提交：
-
-- 旧版发布说明、升级文档、设计截图、临时产物、个人配置、密钥、数据库、`node_modules`、`dist` 和 `target`。
-
-反馈与联系
+反馈与联系：[loveyong07.top/contact](https://loveyong07.top/contact)。
