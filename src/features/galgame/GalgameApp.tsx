@@ -602,7 +602,7 @@ export default function GalgameApp() {
     "--gg-alpha": appearance.opacity / 100,
     "--gg-blur": appearance.blur + "px",
     "--gg-wallpaper":
-      'url("' + (appearance.wallpaper || "/wallpapers/sky-lake.png") + '")',
+      'url("' + (appearance.wallpaper || BRAND.wallpaper) + '")',
   } as CSSProperties;
 
   return (
@@ -636,7 +636,6 @@ export default function GalgameApp() {
           </span>
           <span>
             <strong>{BRAND.name}</strong>
-            <small>LOVEYONG · OPEN SOURCE</small>
           </span>
         </NavLink>
         <div className="gg-nav-caption">
@@ -700,7 +699,6 @@ export default function GalgameApp() {
           </button>
         </div>
         <div className="gg-version">
-          <span>{BRAND.name}</span>
           <span>v{BRAND.version}</span>
         </div>
       </aside>
@@ -1098,7 +1096,6 @@ export default function GalgameApp() {
             </>
           )}
           <footer className="gg-page-footer">
-            <span>{BRAND.name} · FREE & OPEN SOURCE</span>
             <span>
               <SparkleIcon size={9} weight="fill" />
               慢慢收藏，慢慢喜欢。

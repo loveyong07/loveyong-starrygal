@@ -3,14 +3,16 @@ import { version } from "../../package.json";
 
 const GITHUB_USERNAME = "loveyong07";
 const REPOSITORY_URL = "https://github.com/loveyong07/loveyong-starrygal";
+const ASSET_BASE = import.meta.env.BASE_URL;
 
 export const BRAND = {
   name: "StarryGal",
   latinName: "StarryGal",
   title: "StarryGal · 你的故事收藏馆",
   tagline: "把故事，收进日常。",
-  icon: "/brand/starrygal-icon.png",
-  logo: "/brand/starrygal-logo.png",
+  icon: ASSET_BASE + "brand/starrygal-icon.png",
+  logo: ASSET_BASE + "brand/starrygal-logo.png",
+  wallpaper: ASSET_BASE + "wallpapers/sky-lake.png",
   githubUsername: GITHUB_USERNAME,
   githubUrl: `https://github.com/${GITHUB_USERNAME}`,
   repositoryUrl: REPOSITORY_URL,

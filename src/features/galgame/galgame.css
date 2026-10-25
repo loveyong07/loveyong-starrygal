@@ -13,9 +13,12 @@
 }
 .galgame-theme body {
   margin: 0;
+  min-width: 1100px;
+  overflow-x: auto;
   background: #e7eef6;
 }
 .galgame-theme #root {
+  min-width: 1100px;
   height: 100%;
   min-height: 100%;
   isolation: isolate;
@@ -34,6 +37,7 @@
   font-family: "Manrope Variable", "Microsoft YaHei", "PingFang SC", sans-serif;
   color: var(--gg-ink);
   width: 100%;
+  min-width: 1100px;
   height: 100dvh;
   display: flex;
   overflow: hidden;
@@ -179,15 +183,6 @@
 }
 .gg-brand-dot {
   color: var(--gg-primary);
-}
-.gg-brand small {
-  display: block;
-  font-size: 6.8px;
-  font-weight: 650;
-  letter-spacing: 1.7px;
-  margin-top: 7px;
-  color: #70849c;
-  white-space: nowrap;
 }
 .gg-nav-caption {
   margin: 0 14px 13px;
@@ -1554,9 +1549,6 @@
 .gg-nav-caption {
   font-size: 11px;
 }
-.gg-brand small {
-  font-size: 7px;
-}
 .gg-breadcrumb {
   font-size: 11px;
 }
@@ -1864,10 +1856,6 @@
   .gg-brand strong {
     font-size: 22px;
   }
-  .gg-brand small {
-    font-size: 6px;
-    letter-spacing: 1.3px;
-  }
   .gg-topbar {
     padding: 0 26px;
   }
@@ -1899,304 +1887,6 @@
     gap: 6px;
   }
 }
-@media (max-width: 980px) {
-  .gg-sidebar {
-    width: 170px;
-    padding: 27px 11px 17px;
-  }
-  .gg-brand-icon {
-    width: 32px;
-    height: 38px;
-    border-radius: 11px;
-  }
-  .gg-brand-icon svg {
-    width: 23px;
-  }
-  .gg-brand strong {
-    font-size: 20px;
-  }
-  .gg-brand small {
-    font-size: 5.2px;
-  }
-  .gg-navigation a {
-    padding: 0 10px;
-    gap: 10px;
-  }
-  .gg-nav-caption {
-    margin-left: 10px;
-    margin-right: 9px;
-  }
-  .gg-nav-caption span {
-    display: none;
-  }
-  .gg-main {
-    padding-left: 22px;
-    padding-right: 22px;
-  }
-  .gg-topbar {
-    padding: 0 22px;
-    height: 65px;
-  }
-  .gg-page-heading h1 {
-    font-size: 25px;
-  }
-  .gg-content-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .gg-detail {
-    display: none;
-  }
-  .gg-library {
-    min-height: 480px;
-  }
-  .gg-game-grid {
-    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-  }
-  .gg-game-item.is-selected {
-    border-color: #91abcb;
-  }
-  .gg-game-item.is-selected::after {
-    content: "已选择";
-    position: absolute;
-    right: 8px;
-    bottom: 9px;
-    color: #6d89ab;
-    font-size: 7px;
-  }
-}
-@media (max-width: 660px) {
-  .gg-app {
-    display: block;
-    height: 100dvh;
-  }
-  .gg-sidebar {
-    height: 64px;
-    width: 100%;
-    padding: 0 15px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    border-width: 0 0 1px;
-  }
-  .gg-brand {
-    margin: 0;
-    gap: 7px;
-  }
-  .gg-brand-icon {
-    width: 31px;
-    height: 34px;
-    border-radius: 10px;
-  }
-  .gg-brand strong {
-    font-size: 20px;
-  }
-  .gg-brand small {
-    display: none;
-  }
-  .gg-nav-caption,
-  .gg-collection-caption,
-  .gg-sidebar-spacer,
-  .gg-source-card,
-  .gg-version {
-    display: none;
-  }
-  .gg-navigation {
-    display: flex;
-    gap: 3px;
-  }
-  .gg-navigation a {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    justify-content: center;
-  }
-  .gg-navigation a > span,
-  .gg-navigation a > small {
-    display: none;
-  }
-  .gg-sidebar-bottom {
-    padding: 0;
-    margin: 0;
-  }
-  .gg-sidebar-bottom > button:first-child {
-    font-size: 0;
-    gap: 0;
-    padding: 8px;
-  }
-  .gg-sidebar-bottom .gg-about-button {
-    display: none;
-  }
-  .gg-workspace {
-    height: calc(100dvh - 64px);
-  }
-  .gg-topbar {
-    height: 49px;
-    padding: 0 20px;
-  }
-  .gg-topbar-actions {
-    gap: 4px;
-  }
-  .gg-topbar-actions > .gg-local-badge {
-    font-size: 8px;
-    margin-right: 2px;
-  }
-  .gg-topbar-actions > .gg-icon-button {
-    width: 27px;
-    height: 29px;
-  }
-  .gg-main {
-    padding: 8px 16px 22px;
-  }
-  .gg-eyebrow {
-    font-size: 6px;
-    letter-spacing: 1.9px;
-    margin-bottom: 8px;
-  }
-  .gg-page-heading {
-    gap: 12px;
-    padding-bottom: 22px;
-  }
-  .gg-page-heading h1 {
-    font-size: 24px;
-    letter-spacing: 1px;
-  }
-  .gg-page-heading p {
-    font-size: 8px;
-    max-width: 220px;
-    line-height: 1.9;
-    letter-spacing: 0.3px;
-  }
-  .gg-page-heading > .gg-button {
-    padding: 0 12px;
-    min-height: 35px;
-    font-size: 9px !important;
-    gap: 4px;
-  }
-  .gg-page-heading > .gg-button > svg {
-    width: 14px;
-  }
-  .gg-library {
-    min-height: 480px;
-    border-radius: 19px;
-  }
-  .gg-library-heading {
-    padding: 18px 18px 14px;
-  }
-  .gg-library-toolbar {
-    padding: 0 18px;
-    gap: 10px;
-  }
-  .gg-search {
-    height: 37px;
-  }
-  .gg-search input {
-    font-size: 16px;
-    transform: scale(0.7);
-    transform-origin: left center;
-    width: 142%;
-    margin-right: -42%;
-  }
-  .gg-sort {
-    font-size: 8px;
-    gap: 4px;
-  }
-  .gg-sort select {
-    font-size: 9px;
-  }
-  .gg-status-tabs {
-    padding-left: 18px;
-    gap: 27px;
-  }
-  .gg-empty {
-    padding: 31px 14px;
-  }
-  .gg-empty h3 {
-    font-size: 20px;
-    letter-spacing: 0.5px;
-  }
-  .gg-empty > p {
-    font-size: 10px;
-  }
-  .gg-empty-actions {
-    gap: 9px;
-  }
-  .gg-empty-actions .gg-button {
-    padding: 0 13px;
-    min-height: 38px;
-  }
-  .gg-empty-hint {
-    font-size: 7px;
-  }
-  .gg-library-footer {
-    padding-left: 17px;
-    padding-right: 17px;
-    font-size: 6.6px;
-  }
-  .gg-bottom-note {
-    margin-top: 15px;
-    padding: 14px;
-    gap: 10px;
-  }
-  .gg-bottom-note h2 {
-    font-size: 10px;
-  }
-  .gg-bottom-note p {
-    font-size: 7px;
-    max-width: 190px;
-  }
-  .gg-bottom-note > button {
-    font-size: 7px;
-    gap: 4px;
-    max-width: 50px;
-    flex-shrink: 0;
-    line-height: 1.8;
-  }
-  .gg-note-icon {
-    width: 31px;
-    height: 34px;
-    border-radius: 10px;
-    flex-shrink: 0;
-  }
-  .gg-page-footer {
-    font-size: 5px;
-    letter-spacing: 0.7px;
-    gap: 7px;
-    padding-top: 20px;
-  }
-  .gg-page-footer > span:last-child {
-    font-size: 6px;
-    letter-spacing: 0.3px;
-  }
-  .gg-game-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 13px 8px;
-    padding: 17px 13px;
-  }
-  .gg-game-grid:not(.is-list) .gg-game-cover {
-    aspect-ratio: 3/4;
-  }
-  .gg-toast {
-    left: 50%;
-    bottom: 18px;
-    font-size: 10px;
-    width: max-content;
-  }
-  .gg-dialog-heading {
-    padding: 23px 23px 19px;
-  }
-  .gg-dialog-body {
-    padding: 19px 23px 23px;
-  }
-  .gg-dialog-heading h2 {
-    font-size: 20px;
-  }
-  .gg-field input {
-    font-size: 16px;
-  }
-  .gg-brand small {
-    display: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .gg-app *,
   .gg-app *::before,
@@ -2208,36 +1898,6 @@
   }
   .gg-particles {
     display: none;
-  }
-}
-@media (max-width: 980px) {
-  .gg-detail.has-game {
-    display: block;
-    position: fixed;
-    z-index: 15;
-    left: calc(50% + 85px);
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 310px;
-    max-width: calc(100vw - 32px);
-    max-height: calc(100dvh - 36px);
-    overflow-y: auto;
-    background: rgba(242, 248, 255, 0.96);
-    box-shadow:
-      0 0 0 100vmax #45628338,
-      0 20px 70px #304f7b45;
-  }
-  .gg-detail.has-game .gg-detail-close {
-    display: grid;
-  }
-  .gg-detail.has-game > header > small {
-    margin-left: auto;
-    margin-right: 8px;
-  }
-}
-@media (max-width: 660px) {
-  .gg-detail.has-game {
-    left: 50%;
   }
 }
 
@@ -2773,70 +2433,5 @@
   }
   .gg-game-information {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 660px) {
-  .gg-heading-actions > .gg-secondary {
-    display: none;
-  }
-  .gg-topbar-actions {
-    gap: 1px;
-  }
-  .gg-topbar-actions .gg-local-badge {
-    display: none;
-  }
-  .gg-topbar .gg-breadcrumb strong {
-    max-width: 95px;
-  }
-  .gg-game-hero {
-    display: block;
-    padding: 23px;
-  }
-  .gg-detail-poster {
-    width: 140px;
-    margin: 0 auto 24px;
-  }
-  .gg-hero-title h1 {
-    font-size: 25px;
-  }
-  .gg-hero-meta {
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  .gg-hero-actions {
-    gap: 8px;
-  }
-  .gg-hero-actions .gg-hero-play {
-    width: 100%;
-  }
-  .gg-game-information {
-    gap: 17px;
-    margin-top: 17px;
-  }
-  .gg-story-panel,
-  .gg-film-panel {
-    padding: 23px;
-  }
-  .gg-tag-form input {
-    font-size: 16px;
-    height: 40px;
-  }
-  .gg-tag-form .gg-button {
-    min-height: 40px;
-  }
-  .gg-notice-title {
-    font-size: 18px;
-  }
-  .gg-notice-text {
-    font-size: 14px;
-  }
-  .gg-full-library .gg-game-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .gg-dialog-footer {
-    flex-wrap: wrap;
-  }
-  .gg-scan-item {
-    gap: 8px;
   }
 }

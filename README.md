@@ -7,6 +7,7 @@
 <p align="center">把故事，收进日常。</p>
 
 <p align="center">
+  <a href="https://loveyong07.github.io/loveyong-starrygal/">桌面在线预览</a> ·
   <a href="https://github.com/loveyong07/loveyong-starrygal/releases">下载与更新</a> ·
   <a href="https://loveyong07.top/contact">反馈与联系</a> ·
   <a href="#开发运行">开发运行</a>
@@ -15,6 +16,8 @@
 StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服务，基于 KoiPage支持本地游戏与 Steam 游戏库
 
 当前版本已实现本地游戏管理与启动；游戏下载服务尚待后续接口接入。
+
+界面仅面向桌面使用，最小宽度为 1100px。在线预览保留桌面布局，不提供手机布局。API 接好后再制作安装包。
 
 应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用图标采用标志左侧的星月图案。
 
@@ -86,6 +89,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 检查源码：
 
     pnpm build
+    pnpm build:pages
     pnpm test
     pnpm check:ipc
     cargo test --manifest-path src-tauri/Cargo.toml --lib --bins --locked
