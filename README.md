@@ -80,7 +80,9 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
     pnpm install --frozen-lockfile
     pnpm dev
 
-网页预览默认在 http://127.0.0.1:1420，查看界面时建议 **1600×900（16:9）桌面画幅**。浏览器可验证游戏条目、收藏、标签、状态与外观；自动扫描磁盘和运行 .exe 需要桌面环境。
+网页预览默认地址为 `http://127.0.0.1:1420`。建议使用 **1600×900（16:9）桌面画幅**查看界面。
+
+浏览器预览可验证游戏条目、收藏、标签、状态与外观。自动扫描磁盘和运行 `.exe` 需要桌面环境。
 
 运行桌面开发版：
 
@@ -121,6 +123,12 @@ Locale Emulator、Magpie、LunaTranslator 和 7-Zip 分别保留各自的 COPYIN
 
 ## 发布文件约定
 
-上传源码时保留这一份 README、LICENSE、实际源码、锁文件、必要资源、测试和 CI。旧版发布说明、升级文档、设计截图、临时产物、个人配置、密钥、数据库、node_modules、dist 和 target 不进入发布提交。
+上传源码时保留：
 
-反馈与联系：[loveyong07.top/contact](https://loveyong07.top/contact)。
+- 这一份 README、LICENSE、实际源码、锁文件、必要资源、测试和 CI。
+
+以下内容不进入发布提交：
+
+- 旧版发布说明、升级文档、设计截图、临时产物、个人配置、密钥、数据库、`node_modules`、`dist` 和 `target`。
+
+反馈与联系

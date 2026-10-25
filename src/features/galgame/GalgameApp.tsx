@@ -12,20 +12,16 @@ import {
   ArrowUpRightIcon,
   BooksIcon,
   CaretDownIcon,
-  ChatCircleTextIcon,
   CheckCircleIcon,
   ClockCounterClockwiseIcon,
   CloudSlashIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
-  GearSixIcon,
-  GithubLogoIcon,
+  GameControllerIcon,
   HeartIcon,
   InfoIcon,
   ListIcon,
   MagnifyingGlassIcon,
-  MegaphoneIcon,
-  PaletteIcon,
   PlusIcon,
   SlidersHorizontalIcon,
   SparkleIcon,
@@ -61,7 +57,6 @@ import {
 } from "./library";
 import {
   CONTACT_URL,
-  DOWNLOAD_URL,
   NOTICE_VERSION,
   REPOSITORY_URL,
   completionPatch,
@@ -71,6 +66,11 @@ import {
   visitPatch,
   type LibraryGame,
 } from "./model";
+import {
+  compareVersions,
+  fetchLatestRelease,
+  type LatestRelease,
+} from "./update-check";
 import {
   cancelDiscovery,
   discoverInstalledGames,
@@ -93,6 +93,8 @@ import "./galgame.css";
 type ModalKind =
   "add" | "appearance" | "source" | "about" | "notice" | "scan" | null;
 type Filter = "all" | GameStatus;
+type UpdateCheckStatus =
+  "idle" | "checking" | "current" | "available" | "no-release" | "error";
 
 function DesktopSync() {
   useGameProcessSync();
@@ -104,11 +106,13 @@ function ExternalLink({
   label,
   children,
   className = "",
+  onClick,
 }: {
   href: string;
   label: string;
   children: ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
   return (
     <a
@@ -119,6 +123,7 @@ function ExternalLink({
       target="_blank"
       rel="noreferrer"
       onClick={(event) => {
+        onClick?.();
         if (!desktop) return;
         event.preventDefault();
         void import("@tauri-apps/plugin-opener")
@@ -166,6 +171,12 @@ export default function GalgameApp() {
   const [sort, setSort] = useState("added");
   const [modal, setModal] = useState<ModalKind>(null);
   const [noticeReady, setNoticeReady] = useState(false);
+  const [utilitiesExpanded, setUtilitiesExpanded] = useState(false);
+  const [latestRelease, setLatestRelease] = useState<LatestRelease | null>(
+    null,
+  );
+  const [updateCheckStatus, setUpdateCheckStatus] =
+    useState<UpdateCheckStatus>("idle");
   const [appearance, setAppearance] = useState(loadAppearance);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
@@ -179,6 +190,8 @@ export default function GalgameApp() {
   const wallpaperPicker = useRef<HTMLInputElement>(null);
   const firstScanStarted = useRef(false);
   const metadataKeys = useRef(new Set<string>());
+  const updateCheckRequest = useRef<Promise<LatestRelease | null> | null>(null);
+  const updateCheckController = useRef<AbortController | null>(null);
   const revision = useAppStore((state) => state.playTimeRevision);
   const launcher = useGameLauncher(() => {
     void refresh();
@@ -210,10 +223,58 @@ export default function GalgameApp() {
       current.map((item) => (item.id === updated.id ? updated : item)),
     );
   }
+  async function checkForUpdates(manual = true) {
+    setUpdateCheckStatus("checking");
+    let request = updateCheckRequest.current;
+    if (!request) {
+      const controller = new AbortController();
+      updateCheckController.current = controller;
+      request = fetchLatestRelease(controller.signal);
+      updateCheckRequest.current = request;
+    }
+    try {
+      const release = await request;
+      if (updateCheckController.current?.signal.aborted) return;
+      if (!release) {
+        setLatestRelease(null);
+        setUpdateCheckStatus("no-release");
+        if (manual) setToast("GitHub 还没有正式发布版本，应用会定期自动检查。");
+        return;
+      }
+      if (compareVersions(release.version, BRAND.version) > 0) {
+        setLatestRelease(release);
+        setUpdateCheckStatus("available");
+        setToast(`发现新版本 v${release.version}，可从发布页查看。`);
+      } else {
+        setLatestRelease(null);
+        setUpdateCheckStatus("current");
+        if (manual) setToast(`当前已是最新版本 v${BRAND.version}。`);
+      }
+    } catch {
+      if (updateCheckController.current?.signal.aborted) return;
+      setUpdateCheckStatus("error");
+      if (manual) setToast("检查更新失败，请检查网络后重试。");
+    } finally {
+      if (updateCheckRequest.current === request)
+        updateCheckRequest.current = null;
+    }
+  }
 
   useEffect(() => {
     void refresh();
   }, [revision]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void checkForUpdates(false), 1800);
+    const interval = window.setInterval(
+      () => void checkForUpdates(false),
+      6 * 60 * 60 * 1000,
+    );
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+      updateCheckController.current?.abort();
+    };
+  }, []);
   useEffect(() => {
     if (pathname === "/" || pathname === "/home")
       navigate("/library", { replace: true });
@@ -671,23 +732,44 @@ export default function GalgameApp() {
           </NavLink>
         </nav>
         <div className="gg-sidebar-spacer" />
-        <button className="gg-source-card" onClick={() => setModal("source")}>
-          <span className="gg-source-icon">
-            <CloudSlashIcon size={21} />
-          </span>
-          <span>
-            <strong>TouchGal</strong>
-            <small>
-              <i />
-              等待连接故事
-            </small>
-          </span>
-          <ArrowUpRightIcon size={16} />
-        </button>
+        <div className="gg-download-links" aria-label="下载资源">
+          <ExternalLink
+            className="gg-source-card gg-download-card"
+            href="https://www.touchgal.ink/"
+            label="Galgame下载 · TouchGal"
+          >
+            <span className="gg-source-icon">
+              <GameControllerIcon size={20} />
+            </span>
+            <span>
+              <strong>Galgame下载</strong>
+              <small>前往 TouchGal</small>
+            </span>
+            <ArrowUpRightIcon size={14} />
+          </ExternalLink>
+          <ExternalLink
+            className="gg-source-card gg-download-card"
+            href="https://www.moyu.moe/"
+            label="补丁下载 · Moyu Moe"
+          >
+            <span className="gg-source-icon">
+              <DownloadSimpleIcon size={20} />
+            </span>
+            <span>
+              <strong>补丁下载</strong>
+              <small>前往 Moyu Moe</small>
+            </span>
+            <ArrowUpRightIcon size={14} />
+          </ExternalLink>
+        </div>
         <div className="gg-sidebar-bottom">
-          <button onClick={() => setModal("appearance")}>
-            <GearSixIcon {...iconProps} />
-            外观设置
+          <button
+            className="gg-utility-toggle"
+            aria-expanded={utilitiesExpanded}
+            aria-controls="gg-utility-menu"
+            onClick={() => setUtilitiesExpanded((value) => !value)}
+          >
+            {utilitiesExpanded ? "收起" : "展开"}
           </button>
           <button
             className="gg-about-button"
@@ -697,6 +779,82 @@ export default function GalgameApp() {
           >
             <InfoIcon size={20} />
           </button>
+        </div>
+        <div
+          id="gg-utility-menu"
+          className="gg-utility-menu"
+          aria-label="快捷操作"
+          hidden={!utilitiesExpanded}
+        >
+          <button
+            className="gg-utility-item"
+            onClick={() => {
+              setUtilitiesExpanded(false);
+              setModal("notice");
+            }}
+          >
+            公告
+          </button>
+          <button
+            className="gg-utility-item"
+            disabled={updateCheckStatus === "checking"}
+            onClick={() => {
+              setUtilitiesExpanded(false);
+              void checkForUpdates();
+            }}
+          >
+            {updateCheckStatus === "checking" ? "正在检查更新…" : "检查更新"}
+          </button>
+          {latestRelease && updateCheckStatus === "available" ? (
+            <ExternalLink
+              className="gg-utility-item"
+              href={latestRelease.url}
+              label={`查看新版本 v${latestRelease.version}`}
+              onClick={() => setUtilitiesExpanded(false)}
+            >
+              发现新版本 v{latestRelease.version}
+            </ExternalLink>
+          ) : null}
+          {updateCheckStatus === "current" ? (
+            <span className="gg-utility-status" role="status">
+              当前已是最新版本
+            </span>
+          ) : null}
+          {updateCheckStatus === "no-release" ? (
+            <span className="gg-utility-status" role="status">
+              暂无正式发布版本
+            </span>
+          ) : null}
+          {updateCheckStatus === "error" ? (
+            <span className="gg-utility-status" role="status">
+              检查失败，可重试
+            </span>
+          ) : null}
+          <ExternalLink
+            className="gg-utility-item"
+            href={CONTACT_URL}
+            label="反馈与联系"
+            onClick={() => setUtilitiesExpanded(false)}
+          >
+            反馈与联系
+          </ExternalLink>
+          <button
+            className="gg-utility-item"
+            onClick={() => {
+              setUtilitiesExpanded(false);
+              setModal("appearance");
+            }}
+          >
+            外观设置
+          </button>
+          <ExternalLink
+            className="gg-utility-item"
+            href={REPOSITORY_URL}
+            label="查看 GitHub 源码"
+            onClick={() => setUtilitiesExpanded(false)}
+          >
+            GitHub 源码
+          </ExternalLink>
         </div>
         <div className="gg-version">
           <span>v{BRAND.version}</span>
@@ -725,47 +883,21 @@ export default function GalgameApp() {
               <span />
               本地游戏库
             </span>
-            <button
-              className="gg-icon-button"
-              aria-label="公告"
-              title="公告"
-              onClick={() => setModal("notice")}
-            >
-              <MegaphoneIcon size={21} />
-            </button>
-            <ExternalLink
-              className="gg-icon-button"
-              href={DOWNLOAD_URL}
-              label="检查更新"
-            >
-              <DownloadSimpleIcon size={21} />
-            </ExternalLink>
-            <ExternalLink
-              className="gg-icon-button"
-              href={CONTACT_URL}
-              label="反馈与联系"
-            >
-              <ChatCircleTextIcon size={21} />
-            </ExternalLink>
-            <span className="gg-action-divider" />
-            <button
-              className="gg-icon-button"
-              aria-label="调整玻璃外观"
-              title="调整玻璃外观"
-              onClick={() => setModal("appearance")}
-            >
-              <PaletteIcon size={21} />
-            </button>
-            <ExternalLink
-              className="gg-icon-button"
-              href={REPOSITORY_URL}
-              label="查看 GitHub 源码"
-            >
-              <GithubLogoIcon size={21} />
-            </ExternalLink>
+            {latestRelease && updateCheckStatus === "available" ? (
+              <ExternalLink
+                className="gg-update-badge"
+                href={latestRelease.url}
+                label={`查看新版本 v${latestRelease.version}`}
+              >
+                发现更新 v{latestRelease.version}
+                <ArrowUpRightIcon size={14} />
+              </ExternalLink>
+            ) : null}
           </div>
         </header>
-        <main className="gg-main">
+        <main
+          className={"gg-main" + (detailId === null ? " gg-library-page" : "")}
+        >
           {busy && (
             <div className="gg-scan-progress gg-glass" role="status">
               <ArrowClockwiseIcon size={18} />
@@ -1080,19 +1212,6 @@ export default function GalgameApp() {
                   </footer>
                 </section>
               </div>
-              <section className="gg-bottom-note gg-glass">
-                <span className="gg-note-icon">
-                  <SparkleIcon size={24} weight="duotone" />
-                </span>
-                <div>
-                  <h2>每一页，都值得慢慢读。</h2>
-                  <p>封面、故事与影片的位置，已经为你留好。</p>
-                </div>
-                <button onClick={() => setModal("source")}>
-                  认识 TouchGal
-                  <ArrowUpRightIcon size={17} />
-                </button>
-              </section>
             </>
           )}
           <footer className="gg-page-footer">

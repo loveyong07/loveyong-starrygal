@@ -5,9 +5,10 @@ export const REPOSITORY_URL =
   "https://github.com/loveyong07/loveyong-starrygal";
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
-export const NOTICE_VERSION = "1";
+// Increment only when the announcement itself changes so each notice is shown once.
+export const NOTICE_VERSION = "2";
 export const NOTICE_TEXT =
-  "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入";
+  "StarryGal 完全开源免费。现在可以从侧栏下载 Galgame 与补丁，应用也会在启动时检查新版本；发现更新后会通知你，是否前往下载由你决定。";
 
 export interface GameExtras {
   tags: string[];

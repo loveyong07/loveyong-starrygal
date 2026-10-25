@@ -111,7 +111,7 @@ export function NoticeDialog({ close }: { close: () => void }) {
         GPL-3.0-only · 完全开源 · 免费使用
       </div>
       <div className="gg-dialog-footer">
-        <small>之后也可以点击公告图标，再次查看。</small>
+        <small>之后可在左下角“展开”菜单中重新查看公告。</small>
         <button className="gg-button gg-primary" onClick={close}>
           我已了解，进入游戏库
           <ArrowRightIcon size={16} />

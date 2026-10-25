@@ -152,6 +152,7 @@
   border-width: 0 1px 0 0;
   background: rgba(246, 249, 255, calc(var(--gg-alpha) + 0.16));
   box-shadow: 7px 0 50px rgba(66, 101, 144, 0.035);
+  overflow: visible;
 }
 .gg-brand {
   display: flex;
@@ -255,7 +256,29 @@
 }
 .gg-source-card:hover {
   background: rgba(255, 255, 255, 0.55);
-  transform: translateY(-2px);
+  transform: none;
+}
+.gg-download-links {
+  display: grid;
+  gap: 8px;
+}
+.gg-download-card {
+  gap: 6px;
+  min-height: 56px;
+  padding: 8px;
+}
+.gg-download-card .gg-source-icon {
+  width: 28px;
+  height: 30px;
+  flex: 0 0 28px;
+}
+.gg-download-card strong {
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+.gg-download-card small {
+  font-size: 7px;
+  white-space: nowrap;
 }
 .gg-source-icon {
   width: 32px;
@@ -297,6 +320,11 @@
   justify-content: space-between;
   align-items: center;
 }
+.gg-sidebar-bottom .gg-utility-toggle {
+  padding: 5px 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
 .gg-sidebar-bottom button {
   border: 0;
   background: transparent;
@@ -313,6 +341,49 @@
 .gg-sidebar-bottom .gg-about-button {
   padding: 5px;
   color: #8796a9;
+}
+.gg-utility-menu {
+  position: absolute;
+  z-index: 6;
+  left: 14px;
+  right: 14px;
+  bottom: 87px;
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 13px;
+  background: rgba(248, 251, 255, 0.92);
+  box-shadow: 0 10px 32px rgba(58, 85, 117, 0.15), inset 0 1px 0 #fff;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+.gg-utility-menu[hidden] {
+  display: none;
+}
+.gg-utility-menu .gg-utility-item {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #526b87;
+  font-size: 11px;
+  text-align: left;
+}
+.gg-utility-menu .gg-utility-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--gg-primary-dark);
+}
+.gg-utility-menu .gg-utility-item:disabled {
+  opacity: 0.72;
+}
+.gg-utility-status {
+  padding: 3px 9px 6px;
+  color: #71849b;
+  font-size: 9px;
 }
 .gg-version {
   display: flex;
@@ -361,6 +432,22 @@
   align-items: center;
   gap: 15px;
 }
+.gg-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.46);
+  color: #4d7197;
+  font-size: 10px;
+  font-weight: 600;
+}
+.gg-update-badge:hover {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--gg-primary-dark);
+}
 .gg-local-badge {
   display: flex;
   align-items: center;
@@ -399,6 +486,18 @@
   padding: 13px 40px 17px;
   scrollbar-width: thin;
   scrollbar-color: #a4b8ce66 transparent;
+}
+.gg-library-page {
+  display: flex;
+  flex-direction: column;
+}
+.gg-library-page .gg-full-library {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.gg-library-page .gg-full-library .gg-library {
+  height: 100%;
+  min-height: 0;
 }
 .gg-page-heading {
   display: flex;
@@ -959,49 +1058,6 @@
   gap: 5px;
   width: 100%;
   padding: 10px 0 0;
-}
-.gg-bottom-note {
-  margin-top: 20px;
-  border-radius: 15px;
-  padding: 16px 23px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: rgba(255, 255, 255, 0.3);
-}
-.gg-note-icon {
-  color: #9495b8;
-  width: 37px;
-  height: 37px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.32);
-  border: 1px solid #ffffffab;
-  border-radius: 12px;
-}
-.gg-bottom-note h2 {
-  font-size: 11px;
-  font-weight: 550;
-  letter-spacing: 0.6px;
-}
-.gg-bottom-note p {
-  font-size: 8px;
-  color: #7387a0;
-  margin-top: 4px;
-  letter-spacing: 0.3px;
-}
-.gg-bottom-note > button {
-  margin-left: auto;
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  background: transparent;
-  border: 0;
-  color: #627e9d;
-  font-size: 8px;
-}
-.gg-bottom-note > button:hover {
-  color: var(--gg-primary-dark);
 }
 .gg-page-footer {
   display: flex;
@@ -1696,20 +1752,6 @@
 .gg-launch-hint {
   font-size: 8px;
 }
-.gg-bottom-note {
-  padding-top: 18px;
-  padding-bottom: 18px;
-}
-.gg-bottom-note h2 {
-  font-size: 13px;
-}
-.gg-bottom-note p {
-  font-size: 10px;
-  color: #5b7491;
-}
-.gg-bottom-note > button {
-  font-size: 10px;
-}
 .gg-page-footer {
   font-size: 7px;
 }
@@ -1837,11 +1879,6 @@
   }
   .gg-detail-tabs {
     margin-top: 26px;
-  }
-  .gg-bottom-note {
-    padding-top: 20px;
-    padding-bottom: 20px;
-    margin-top: 24px;
   }
 }
 @media (max-width: 1200px) {
