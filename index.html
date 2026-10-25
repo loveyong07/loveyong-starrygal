@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN" class="galgame-theme">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="application-name" content="loveyong-opengal" />
+    <link rel="icon" type="image/png" href="/brand/opengal.png" />
+    <meta name="description" content="Galgame — 把故事，收进日常。透明玻璃风格的本地游戏收藏馆。" />
+    <title>loveyong-opengal · 你的故事收藏馆</title>
+  </head>
+
+  <body>
+    <!-- Backdrop for the 液态玻璃 theme. Always present, hidden unless
+         <html> carries `.glass` (see `#lg-backdrop` in src/index.css), so no
+         component has to mount it and `src/App.tsx` stays untouched.
+
+         `#lg-backdrop-image` is the user's custom wallpaper and stays empty
+         here: `src/lib/backdrop.ts` paints it through the `--lg-bg-*` custom
+         properties. It sits *below* `.lg-hue`, so the hue rotation that keeps
+         the glass tint alive never recolours the user's own picture. -->
+    <div id="lg-backdrop" aria-hidden="true">
+      <div id="lg-backdrop-image"></div>
+      <div class="lg-hue">
+        <div class="lg-blobs"></div>
+      </div>
+      <div class="lg-veil"></div>
+    </div>
+    <div id="root"><div role="status" class="flex h-full items-center justify-center text-sm text-muted-foreground">正在准备游戏库…</div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
