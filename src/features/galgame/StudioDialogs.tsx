@@ -207,7 +207,7 @@ export function AppearanceDialog({
       <div className="gg-settings-section gg-setting-row">
         <div>
           <strong>你的背景</strong>
-          <p>PNG、JPG 或 WebP，最大 3MB。</p>
+          <p>PNG、JPG 或 WebP，按原图保存，不限制文件大小。</p>
         </div>
         <button className="gg-button gg-secondary" onClick={pickWallpaper}>
           <ImageSquareIcon size={17} />

@@ -157,7 +157,6 @@ pub async fn download_cover(url: &str) -> CmdResult<Vec<u8>> {
     if !status.is_success() { return Err(CmdError(format!("封面下载返回 HTTP {status}"))); }
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|error| CmdError(format!("封面读取失败：{error}")))? {
-        if bytes.len() + chunk.len() > 20 * 1024 * 1024 { return Err(CmdError("封面不能超过 20 MB".into())); }
         bytes.extend_from_slice(&chunk);
     }
     image::guess_format(&bytes).map_err(|_| CmdError("封面下载结果不是有效图片".into()))?;

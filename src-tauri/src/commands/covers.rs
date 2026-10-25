@@ -1,10 +1,7 @@
 use super::error::{CmdError, CmdResult};
 use sha2::{Digest, Sha256};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
-
-const MAX_COVER: usize = 20 * 1024 * 1024;
 
 #[derive(Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,16 +33,7 @@ fn is_managed(path: &str, directory: &Path) -> bool {
 }
 
 fn read_image(path: &Path) -> CmdResult<Vec<u8>> {
-    let file = std::fs::File::open(path)
-        .map_err(|error| CmdError(format!("无法读取封面图片：{error}")))?;
-    let mut bytes = Vec::new();
-    file.take((MAX_COVER + 1) as u64)
-        .read_to_end(&mut bytes)
-        .map_err(|error| CmdError(format!("无法读取封面图片：{error}")))?;
-    if bytes.len() > MAX_COVER {
-        return Err(CmdError("封面图片不能超过 20 MB".into()));
-    }
-    Ok(bytes)
+    std::fs::read(path).map_err(|error| CmdError(format!("无法读取封面图片：{error}")))
 }
 
 pub(super) async fn retain(directory: &Path, source: &str) -> CmdResult<String> {
@@ -243,9 +231,6 @@ pub async fn covers_migrate(app: tauri::AppHandle) -> CmdResult<MigrationReport>
 }
 
 fn cache_image(dir: &Path, bytes: &[u8]) -> CmdResult<String> {
-    if bytes.len() > MAX_COVER {
-        return Err(CmdError("封面图片不能超过 20 MB".into()));
-    }
     let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
         .with_guessed_format()
         .map_err(|_| CmdError("无法识别封面图片格式".into()))?;
@@ -257,14 +242,10 @@ fn cache_image(dir: &Path, bytes: &[u8]) -> CmdResult<String> {
         Some(image::ImageFormat::Bmp) => "bmp",
         _ => return Err(CmdError("请选择 PNG、JPEG、WebP、GIF 或 BMP 图片".into())),
     };
-    let mut limits = image::Limits::default();
-    limits.max_image_width = Some(10000);
-    limits.max_image_height = Some(10000);
-    limits.max_alloc = Some(128 * 1024 * 1024);
-    reader.limits(limits);
+    reader.limits(image::Limits::no_limits());
     reader
         .decode()
-        .map_err(|_| CmdError("封面图片损坏或尺寸过大".into()))?;
+        .map_err(|_| CmdError("封面图片损坏或当前设备无法解码".into()))?;
     std::fs::create_dir_all(dir).map_err(|e| CmdError(format!("无法创建封面目录：{e}")))?;
     let path = dir.join(format!("{:x}.{ext}", Sha256::digest(bytes)));
     if std::fs::read(&path).ok().as_deref() != Some(bytes) {
@@ -352,10 +333,9 @@ mod tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
     #[test]
-    fn corrupt_and_oversized_images_are_rejected_before_writing() {
+    fn corrupt_images_are_rejected_before_writing() {
         let dir = std::env::temp_dir().join("koipage-invalid-cover-test");
         assert!(cache_image(&dir, b"not an image").is_err());
-        assert!(cache_image(&dir, &vec![0; 20 * 1024 * 1024 + 1]).is_err());
         assert!(!dir.exists());
     }
 

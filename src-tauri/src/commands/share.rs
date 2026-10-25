@@ -4,7 +4,6 @@ use tauri::AppHandle;
 use super::error::{CmdError, CmdResult};
 
 const MAX_PNG_BYTES: usize = 24 * 1024 * 1024;
-const MAX_COVER_BYTES: usize = 20 * 1024 * 1024;
 const SHARE_HOST: &str = "https://beacon.host";
 
 fn validate_png(bytes: &[u8]) -> CmdResult<()> {
@@ -67,12 +66,7 @@ pub async fn share_cover_read(app: AppHandle, game_id: i64) -> CmdResult<tauri::
         crate::metadata::download_cover(&path).await?
     } else {
         tauri::async_runtime::spawn_blocking(move || -> CmdResult<Vec<u8>> {
-            use std::io::Read;
-            let file = std::fs::File::open(&path).map_err(|_| CmdError("封面文件不存在或不可读".into()))?;
-            let mut bytes = Vec::new();
-            file.take((MAX_COVER_BYTES + 1) as u64).read_to_end(&mut bytes).map_err(|_| CmdError("封面读取失败".into()))?;
-            if bytes.len() > MAX_COVER_BYTES { return Err(CmdError("封面超过 20 MB".into())); }
-            Ok(bytes)
+            std::fs::read(&path).map_err(|_| CmdError("封面文件不存在或不可读".into()))
         }).await.map_err(|error| CmdError(error.to_string()))??
     };
     Ok(tauri::ipc::Response::new(bytes))

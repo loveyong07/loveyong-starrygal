@@ -47,8 +47,12 @@ import {
   isGameExecutable,
   listGames,
   loadAppearance,
+  loadAppearanceWallpaper,
   readPreference,
+  clearPreviewCover,
+  clearPreviewWallpaper,
   removeGame,
+  savePreviewWallpaper,
   saveAppearance,
   titleFromPath,
   updateGame,
@@ -140,7 +144,8 @@ function ExternalLink({
 
 function Cover({ game }: { game: LibraryGame }) {
   const [failed, setFailed] = useState<string | null>(null);
-  const src = coverSrc(game.coverPath);
+  const src = coverSrc(game.customCoverPath || game.coverPath);
+  const coverBadge = game.releaseDate?.trim();
   return (
     <div className="gg-game-cover">
       {src && failed !== src ? (
@@ -156,6 +161,7 @@ function Cover({ game }: { game: LibraryGame }) {
           <span>封面待补充</span>
         </>
       )}
+      {coverBadge && <span className="gg-cover-date">{coverBadge}</span>}
     </div>
   );
 }
@@ -304,6 +310,21 @@ export default function GalgameApp() {
     };
   }, []);
   useEffect(() => {
+    let active = true;
+    void loadAppearanceWallpaper().then((wallpaper) => {
+      if (active && wallpaper) {
+        setAppearance((current) =>
+          current.wallpaper.startsWith("blob:")
+            ? current
+            : { ...current, wallpaper },
+        );
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4600);
     return () => clearTimeout(timer);
@@ -356,16 +377,27 @@ export default function GalgameApp() {
           completed = true;
           return;
         }
+        // Metadata should fill gaps, not overwrite information the user has
+        // already entered (including a custom cover).
         const patch = {
-          ...(result.title?.trim() ? { title: result.title.trim() } : {}),
-          ...(result.originalTitle
-            ? { originalTitle: result.originalTitle }
+          ...(!target.originalTitle?.trim() && result.originalTitle?.trim()
+            ? { originalTitle: result.originalTitle.trim() }
             : {}),
-          ...(result.coverUrl ? { coverPath: result.coverUrl } : {}),
-          ...(result.description ? { description: result.description } : {}),
-          ...(result.developer ? { developer: result.developer } : {}),
-          ...(result.releaseDate ? { releaseDate: result.releaseDate } : {}),
-          ...(result.videoUrl ? { videoUrl: result.videoUrl } : {}),
+          ...(!target.coverPath?.trim() && result.coverUrl?.trim()
+            ? { coverPath: result.coverUrl.trim() }
+            : {}),
+          ...(!target.description?.trim() && result.description?.trim()
+            ? { description: result.description.trim() }
+            : {}),
+          ...(!target.developer?.trim() && result.developer?.trim()
+            ? { developer: result.developer.trim() }
+            : {}),
+          ...(!target.releaseDate?.trim() && result.releaseDate?.trim()
+            ? { releaseDate: result.releaseDate.trim() }
+            : {}),
+          ...(!target.videoUrl?.trim() && result.videoUrl?.trim()
+            ? { videoUrl: result.videoUrl.trim() }
+            : {}),
           tags: normalizeTags([...target.tags, ...(result.tags || [])]),
         };
         const updated = await updateGame(target.id, patch);
@@ -403,8 +435,9 @@ export default function GalgameApp() {
     try {
       saveAppearance(next);
       setAppearance(next);
+      if (patch.wallpaper === "") void clearPreviewWallpaper().catch(() => {});
     } catch {
-      setToast("设置未能保存，图片可能过大或本地空间不足。");
+      setToast("设置未能保存，请重试。");
     }
   }
   async function openGame(item: LibraryGame) {
@@ -931,6 +964,14 @@ export default function GalgameApp() {
                 saveTags={async (tags) => {
                   replaceGame(await updateGame(game.id, { tags }));
                 }}
+                saveReview={async (rating, notes) => {
+                  replaceGame(await updateGame(game.id, { rating, notes }));
+                }}
+                saveCover={async (customCoverPath) => {
+                  replaceGame(await updateGame(game.id, { customCoverPath }));
+                  if (!desktop && customCoverPath === null)
+                    await clearPreviewCover(game.id).catch(() => {});
+                }}
                 launch={() => void startGame(game)}
                 remove={() => setRemoveId(game.id)}
                 metadataBusy={metadataBusy}
@@ -1239,19 +1280,16 @@ export default function GalgameApp() {
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (!file) return;
-          if (
-            !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-            file.size > 3 * 1024 * 1024
-          ) {
-            setToast("请选择不超过 3MB 的 PNG、JPG 或 WebP 图片。");
+          if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+            setToast("请选择 PNG、JPG 或 WebP 图片。");
             event.target.value = "";
             return;
           }
-          const reader = new FileReader();
-          reader.onerror = () => setToast("图片未能读取，请重试。");
-          reader.onload = () =>
-            adjustAppearance({ wallpaper: String(reader.result) });
-          reader.readAsDataURL(file);
+          void savePreviewWallpaper(file)
+            .then((wallpaper) => adjustAppearance({ wallpaper }))
+            .catch(() =>
+              setToast("背景图片保存失败，请检查本地可用空间后重试。"),
+            );
           event.target.value = "";
         }}
       />

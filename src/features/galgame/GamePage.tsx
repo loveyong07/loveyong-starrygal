@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowUpRightIcon,
@@ -16,7 +16,9 @@ import {
 } from "@phosphor-icons/react";
 import { coverSrc } from "@/lib/asset";
 import { formatPlayTime } from "@/types/game";
+import { gameCoverImport } from "@/lib/db";
 import { normalizeTags, statusOf, type LibraryGame } from "./model";
+import { desktop, savePreviewCover } from "./library";
 import { Modal } from "./StudioDialogs";
 
 export default function GamePage({
@@ -26,6 +28,8 @@ export default function GamePage({
   complete,
   rename,
   saveTags,
+  saveReview,
+  saveCover,
   launch,
   remove,
   metadataBusy,
@@ -36,6 +40,8 @@ export default function GamePage({
   complete: (value: boolean) => void;
   rename: (title: string) => Promise<void>;
   saveTags: (tags: string[]) => Promise<void>;
+  saveReview: (rating: number | null, notes: string | null) => Promise<void>;
+  saveCover: (coverPath: string | null) => Promise<void>;
   launch: () => void;
   remove: () => void;
   metadataBusy: boolean;
@@ -45,8 +51,107 @@ export default function GamePage({
   const [title, setTitle] = useState(game.title);
   const [error, setError] = useState("");
   const [failedCover, setFailedCover] = useState<string | null>(null);
-  const src = coverSrc(game.coverPath);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverError, setCoverError] = useState("");
+  const [coverNotice, setCoverNotice] = useState("");
+  const [ratingDraft, setRatingDraft] = useState(
+    game.rating === null ? "" : String(game.rating),
+  );
+  const [reviewDraft, setReviewDraft] = useState(game.notes || "");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewNotice, setReviewNotice] = useState("");
+  const coverInput = useRef<HTMLInputElement>(null);
+  const src = coverSrc(game.customCoverPath || game.coverPath);
   const status = statusOf(game);
+
+  async function chooseCover() {
+    setCoverError("");
+    setCoverNotice("");
+    setCoverBusy(true);
+    try {
+      if (desktop) {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const selected = await open({
+          title: "选择游戏封面",
+          multiple: false,
+          filters: [
+            { name: "图片", extensions: ["png", "jpg", "jpeg", "webp"] },
+          ],
+        });
+        if (typeof selected !== "string") return;
+        const savedPath = await gameCoverImport(game.id, selected);
+        await saveCover(savedPath);
+      } else {
+        setCoverBusy(false);
+        coverInput.current?.click();
+        return;
+      }
+      setFailedCover(null);
+      setCoverNotice("自定义封面已保存，原封面仍保留。");
+    } catch (cause) {
+      setCoverError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setCoverBusy(false);
+    }
+  }
+
+  async function saveBrowserCover(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setCoverError("请选择图片文件。");
+      return;
+    }
+    setCoverBusy(true);
+    setCoverError("");
+    setCoverNotice("");
+    try {
+      const imageUrl = await savePreviewCover(game.id, file);
+      await saveCover(imageUrl);
+      setFailedCover(null);
+      setCoverNotice("自定义封面已保存，原封面仍保留。");
+    } catch (cause) {
+      setCoverError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setCoverBusy(false);
+      if (coverInput.current) coverInput.current.value = "";
+    }
+  }
+
+  async function saveReviewDraft() {
+    const parsedRating = ratingDraft.trim() ? Number(ratingDraft) : null;
+    if (
+      parsedRating !== null &&
+      (!Number.isFinite(parsedRating) || parsedRating < 0 || parsedRating > 10)
+    ) {
+      setReviewNotice("评分请填写 0 到 10 之间的数字。");
+      return;
+    }
+    setReviewBusy(true);
+    setReviewNotice("");
+    try {
+      await saveReview(parsedRating, reviewDraft.trim() || null);
+      setReviewDraft(reviewDraft.trim());
+      setReviewNotice("评价已保存。");
+    } catch {
+      setReviewNotice("评价未能保存，请重试。");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function restoreCover() {
+    setCoverBusy(true);
+    setCoverError("");
+    setCoverNotice("");
+    try {
+      await saveCover(null);
+      setFailedCover(null);
+      setCoverNotice("已恢复资料中的原封面。");
+    } catch {
+      setCoverError("原封面未能恢复，请重试。");
+    } finally {
+      setCoverBusy(false);
+    }
+  }
 
   async function addTag() {
     const tags = normalizeTags([...game.tags, ...tagDraft.split(/[,，]/)]);
@@ -84,6 +189,46 @@ export default function GamePage({
               <small>TouchGal · 等待连接</small>
             </div>
           )}
+          <div className="gg-cover-actions">
+            <button
+              className="gg-cover-edit"
+              type="button"
+              onClick={() => void chooseCover()}
+              disabled={coverBusy}
+            >
+              <ImageSquareIcon size={15} />
+              {coverBusy ? "保存中…" : "更换封面"}
+            </button>
+            {game.customCoverPath && (
+              <button
+                className="gg-cover-edit is-restore"
+                type="button"
+                onClick={() => void restoreCover()}
+                disabled={coverBusy}
+              >
+                恢复原图
+              </button>
+            )}
+          </div>
+          {(coverError || coverNotice) && (
+            <span
+              className={"gg-cover-feedback" + (coverError ? " has-error" : "")}
+              role={coverError ? "alert" : "status"}
+            >
+              {coverError || coverNotice}
+            </span>
+          )}
+          <input
+            ref={coverInput}
+            className="gg-cover-input"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-label="选择自定义游戏封面"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void saveBrowserCover(file);
+            }}
+          />
         </div>
         <div className="gg-hero-copy">
           <div className="gg-eyebrow">
@@ -273,6 +418,68 @@ export default function GamePage({
           </button>
         </section>
       </div>
+      <section
+        className="gg-review-panel gg-glass"
+        aria-labelledby="gg-review-title"
+      >
+        <div className="gg-review-heading">
+          <div>
+            <span className="gg-section-kicker">YOUR IMPRESSION</span>
+            <h2 id="gg-review-title">我的评价</h2>
+          </div>
+          <span>只保存在你的游戏库中</span>
+        </div>
+        <div className="gg-review-grid">
+          <label className="gg-rating-field">
+            <span>
+              个人评分 <small>满分 10 分</small>
+            </span>
+            <div>
+              <input
+                type="number"
+                min="0"
+                max="10"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="未评分"
+                value={ratingDraft}
+                onChange={(event) => {
+                  setRatingDraft(event.target.value);
+                  setReviewNotice("");
+                }}
+                aria-label="个人评分，0 到 10 分"
+              />
+              <strong>/ 10</strong>
+            </div>
+          </label>
+          <label className="gg-review-notes">
+            <span>留下几句感想</span>
+            <textarea
+              value={reviewDraft}
+              onChange={(event) => {
+                setReviewDraft(event.target.value);
+                setReviewNotice("");
+              }}
+              maxLength={4000}
+              placeholder="喜欢的角色、难忘的片段，或通关后的心情……"
+              aria-label="游戏个人评价"
+            />
+            <small>{reviewDraft.length} / 4000</small>
+          </label>
+        </div>
+        <div className="gg-review-footer">
+          <span role="status">{reviewNotice}</span>
+          <button
+            className="gg-button gg-primary"
+            type="button"
+            onClick={() => void saveReviewDraft()}
+            disabled={reviewBusy}
+          >
+            {reviewBusy ? "保存中…" : "保存评价"}
+            <CheckIcon size={16} />
+          </button>
+        </div>
+      </section>
       {editing && (
         <Modal
           title="修改游戏名称"

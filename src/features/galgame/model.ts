@@ -13,6 +13,7 @@ export const NOTICE_TEXT =
 export interface GameExtras {
   tags: string[];
   videoUrl: string | null;
+  customCoverPath: string | null;
   visitedAt: string | null;
   source: "local" | "steam";
   steamAppId: string | null;
@@ -51,6 +52,10 @@ export function extras(value: unknown): GameExtras {
   return {
     tags: normalizeTags(item.tags),
     videoUrl: mediaUrl(item.videoUrl),
+    customCoverPath:
+      typeof item.customCoverPath === "string" && item.customCoverPath.trim()
+        ? item.customCoverPath.trim()
+        : null,
     visitedAt:
       typeof item.visitedAt === "string" &&
       Number.isFinite(Date.parse(item.visitedAt))

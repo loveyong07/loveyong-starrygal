@@ -354,7 +354,9 @@
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-radius: 13px;
   background: rgba(248, 251, 255, 0.92);
-  box-shadow: 0 10px 32px rgba(58, 85, 117, 0.15), inset 0 1px 0 #fff;
+  box-shadow:
+    0 10px 32px rgba(58, 85, 117, 0.15),
+    inset 0 1px 0 #fff;
   backdrop-filter: blur(18px) saturate(1.08);
   -webkit-backdrop-filter: blur(18px) saturate(1.08);
 }
@@ -2470,5 +2472,263 @@
   }
   .gg-game-information {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Portrait covers follow the reference while keeping StarryGal's glass look. */
+.gg-game-grid {
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 20px 16px;
+  padding: 22px;
+}
+.gg-game-item {
+  min-width: 0;
+  padding: 5px;
+  border-radius: 10px;
+}
+.gg-game-item:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.48);
+}
+.gg-game-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+}
+.gg-game-cover > img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.gg-game-cover > span:not(.gg-cover-date) {
+  position: relative;
+  z-index: 1;
+}
+.gg-game-cover > .gg-cover-date {
+  position: absolute;
+  z-index: 2;
+  bottom: 7px;
+  left: 50%;
+  max-width: calc(100% - 24px);
+  min-width: 72%;
+  padding: 4px 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 5px;
+  background: rgba(243, 248, 255, 0.88);
+  color: #506b89;
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  box-shadow: 0 3px 10px rgba(41, 67, 99, 0.14);
+}
+.gg-game-select:hover .gg-game-cover {
+  background: rgba(255, 255, 255, 0.48);
+  border-color: rgba(255, 255, 255, 0.88);
+}
+.gg-game-grid.is-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+.is-list .gg-game-cover {
+  aspect-ratio: auto;
+}
+.is-list .gg-cover-date {
+  display: none;
+}
+@media (min-width: 1500px) {
+  .gg-full-library .gg-game-grid:not(.is-list) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.gg-detail-poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-color: rgba(255, 255, 255, 0.64);
+  box-shadow: 0 15px 35px rgba(41, 67, 99, 0.13);
+}
+.gg-detail-poster > img {
+  object-fit: cover;
+  object-position: center;
+}
+.gg-cover-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 7px;
+  background: rgba(243, 248, 255, 0.88);
+  color: #536d8a;
+  font-size: 11px !important;
+  white-space: nowrap;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 3px 10px rgba(41, 67, 99, 0.14);
+}
+.gg-cover-edit:hover {
+  background: rgba(255, 255, 255, 0.96);
+}
+.gg-cover-edit.is-restore {
+  background: rgba(231, 239, 249, 0.9);
+}
+.gg-cover-edit.is-restore:hover {
+  background: rgba(255, 255, 255, 0.96);
+}
+.gg-cover-edit:disabled {
+  opacity: 0.72;
+}
+.gg-cover-actions {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  right: 8px;
+  bottom: 9px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.gg-cover-feedback {
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  bottom: 51px;
+  left: 8px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 6px;
+  background: rgba(243, 248, 255, 0.93);
+  color: #536d8a;
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+}
+.gg-cover-feedback.has-error {
+  color: #a34d65;
+}
+.gg-cover-input {
+  display: none;
+}
+.gg-review-panel {
+  margin-top: 22px;
+  padding: 25px 27px 21px;
+  border-radius: 21px;
+}
+.gg-review-heading,
+.gg-review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.gg-review-heading h2 {
+  margin-top: 6px !important;
+  color: #4f6a87;
+  font-size: 17px;
+  font-weight: 550;
+}
+.gg-review-heading > span {
+  color: #8999ae;
+  font-size: 10px;
+}
+.gg-review-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.48fr) minmax(0, 1.52fr);
+  gap: 24px;
+  margin-top: 20px;
+}
+.gg-rating-field,
+.gg-review-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: #657d99;
+  font-size: 11px;
+}
+.gg-rating-field > span,
+.gg-review-notes > span {
+  font-weight: 550;
+}
+.gg-rating-field small {
+  margin-left: 5px;
+  color: #94a2b5;
+  font-size: 9px;
+  font-weight: 400;
+}
+.gg-rating-field > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gg-rating-field input {
+  width: 115px;
+  height: 39px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.83);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+  color: #4f6988;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.gg-rating-field strong {
+  color: #8a9bb1;
+  font-size: 11px;
+  font-weight: 500;
+}
+.gg-review-notes {
+  position: relative;
+}
+.gg-review-notes textarea {
+  min-height: 92px;
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.83);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.33);
+  color: #4f6988;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.gg-review-notes textarea::placeholder {
+  color: #99a8bb;
+}
+.gg-review-notes > small {
+  position: absolute;
+  right: 9px;
+  bottom: 6px;
+  color: #94a2b5;
+  font-size: 9px;
+}
+.gg-review-footer {
+  margin-top: 15px;
+}
+.gg-review-footer > span {
+  min-height: 18px;
+  color: #8195ad;
+  font-size: 10px;
+}
+.gg-review-footer .gg-button {
+  min-height: 38px;
+}
+@media (max-width: 1250px) {
+  .gg-review-panel {
+    padding: 21px;
+  }
+  .gg-review-grid {
+    grid-template-columns: minmax(155px, 0.55fr) minmax(0, 1.45fr);
+    gap: 16px;
   }
 }
