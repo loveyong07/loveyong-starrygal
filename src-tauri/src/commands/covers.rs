@@ -447,7 +447,7 @@ mod tests {
     }
     #[tokio::test]
     async fn migration_downloads_remote_covers_without_an_installed_game() {
-        use std::io::Write;
+        use std::io::{Read, Write};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://{}/remote.jpg", listener.local_addr().unwrap());
         listener.set_nonblocking(true).unwrap();
