@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/brand/starrygal-logo.png" alt="StarryGal 星月标志" width="720" />
+  <img src="./public/brand/starrygal-logo.png" alt="StarryGal 原创人物图标与品牌文字" width="720" />
 </p>
 
 <h1 align="center">StarryGal</h1>
@@ -19,7 +19,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 
 界面仅面向桌面使用，最小宽度为 1100px。在线预览保留桌面布局，不提供手机布局。API 接好后再制作安装包。
 
-应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用图标采用标志左侧的星月图案。
+应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用 Logo、桌面图标和网页图标统一采用用户原创图片提取的人物抱星图案。
 
 本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.1.0**，修改日期为 **2026-10-26**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
 

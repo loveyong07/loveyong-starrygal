@@ -308,7 +308,7 @@ export function AboutDialog({ close }: { close: () => void }) {
       close={close}
     >
       <div className="gg-about-mark">
-        <img src={BRAND.icon} alt="StarryGal 星月图标" width={64} height={64} />
+        <img src={BRAND.icon} alt="StarryGal 人物抱星图标" width={64} height={64} />
         <div>
           <strong>让喜欢的故事，有自己的位置。</strong>
           <p>Tauri 2 · Rust · React · TypeScript · SQLite</p>
