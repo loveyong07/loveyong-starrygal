@@ -2630,9 +2630,25 @@
   border-color: rgba(255, 255, 255, 0.64);
   box-shadow: 0 15px 35px rgba(41, 67, 99, 0.13);
 }
-.gg-detail-poster > img {
+.gg-detail-poster > img,
+.gg-cover-preview > img {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center;
+}
+.gg-cover-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.gg-cover-preview:focus-visible {
+  outline-offset: -4px;
 }
 .gg-cover-edit {
   display: inline-flex;
@@ -2984,6 +3000,11 @@
   width: auto;
   margin: auto;
   border-radius: 10px;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+.gg-cover-full {
+  max-height: 72vh;
 }
 .gg-resource-tabs a {
   display: inline-flex;

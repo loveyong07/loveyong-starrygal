@@ -126,6 +126,7 @@ export default function GamePage({
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverError, setCoverError] = useState("");
   const [coverNotice, setCoverNotice] = useState("");
+  const [coverOpen, setCoverOpen] = useState(false);
   const [matching, setMatching] = useState(false);
   const [videoDraft, setVideoDraft] = useState(videoUrl || "");
   const [screenshot, setScreenshot] = useState<string | null>(null);
@@ -147,7 +148,11 @@ export default function GamePage({
   }, [videoUrl]);
   const coverInput = useRef<HTMLInputElement>(null);
   const src = coverSrc(game.customCoverPath || game.coverPath);
+  const hasCover = Boolean(src && failedCover !== src);
   const status = statusOf(game);
+  useEffect(() => {
+    setCoverOpen(false);
+  }, [game.id, src]);
 
   async function chooseCover() {
     setCoverError("");
@@ -224,12 +229,23 @@ export default function GamePage({
       </button>
       <section className="gg-game-hero gg-glass">
         <div className="gg-detail-poster">
-          {src && failedCover !== src ? (
-            <img
-              src={src}
-              alt={game.title + "封面"}
-              onError={() => setFailedCover(src)}
-            />
+          {hasCover ? (
+            <button
+              className="gg-cover-preview"
+              type="button"
+              aria-label={`放大 ${game.title} 封面`}
+              title="点击放大封面"
+              onClick={() => setCoverOpen(true)}
+            >
+              <img
+                src={src}
+                alt={game.title + "封面"}
+                onError={() => {
+                  setCoverOpen(false);
+                  setFailedCover(src!);
+                }}
+              />
+            </button>
           ) : (
             <div className="gg-game-art-empty">
               <ImageSquareIcon size={55} weight="light" />
@@ -568,12 +584,28 @@ export default function GamePage({
           </button>
         </section>
       </div>
+      {coverOpen && hasCover && (
+        <Modal
+          title="游戏封面"
+          subtitle={game.title}
+          close={() => setCoverOpen(false)}
+          wide
+        >
+          <img
+            className="gg-screenshot-full gg-cover-full"
+            src={src}
+            alt={game.title + "封面"}
+            onClick={() => setCoverOpen(false)}
+          />
+        </Modal>
+      )}
       {screenshot && (
         <Modal title="游戏截图" close={() => setScreenshot(null)} wide>
           <img
             className="gg-screenshot-full"
             src={screenshot}
             alt={game.title + "游戏截图"}
+            onClick={() => setScreenshot(null)}
           />
         </Modal>
       )}
