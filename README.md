@@ -13,6 +13,12 @@
   <a href="#开发运行">开发运行</a>
 </p>
 
+<p align="center">
+  <img src="./public/brand/starrygal-preview.jpg" alt="StarryGal 启动器界面预览" width="900" />
+</p>
+
+<p align="center">这是启动器初始效果，左下角可自定义背景</p>
+
 StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服务，基于 KoiPage支持本地游戏与 Steam 游戏库
 
 当前版本支持本地游戏管理与启动、TouchGal 资料匹配，以及游戏资源与补丁页面入口。游戏文件的下载在 TouchGal 网站完成。
@@ -50,7 +56,8 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 2. 由于API密钥部署在vercel服务器上（经济能力有限），直连的用户也许加载缓慢，可以科学上网尝试>_<
 3. 由于第一次尝试做启动器，功能或者内容不完全，请谅解
 4. 由于API调用的限制，开放了token自定义，可以自行前往TouchGAL API获取token
-5. 反馈：https://loveyong07.top/contact (ฅ•.•ฅ)ﻌﻌﻌ♥️
+5. 由于启动器识别功能不全，也许会漏字段以及一些游戏在touchgal上找不到无法同步>_<
+6. 反馈：https://loveyong07.top/contact (ฅ•.•ฅ)ﻌﻌﻌ♥️
 
 ## 使用
 
