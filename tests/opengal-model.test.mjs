@@ -142,7 +142,7 @@ test("notice is first-run only and links use the final project identity", () => 
   assert.equal(noticeNeeded({}), true);
   assert.equal(
     NOTICE_TEXT,
-    "StarryGal 完全开源免费。现在可以从侧栏下载 Galgame 与补丁，应用也会在启动时检查新版本；发现更新后会通知你，是否前往下载由你决定。",
+    "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入",
   );
   assert.equal(PROJECT_NAME, "loveyong-starrygal");
   assert.equal(

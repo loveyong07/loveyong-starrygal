@@ -1,9 +1,11 @@
 import { mediaUrl, normalizeTags, type LibraryGame } from "./model.ts";
 import type { GameMetadata, GameMetadataProvider } from "./metadata.ts";
 import { parseTouchGalIntroduction } from "./touchgal-introduction.ts";
+import { sameGameTitle, titleSearchKeywords } from "./title-matching.ts";
 
 export const DEFAULT_TOUCHGAL_ENDPOINT = "https://loveyong07.top/api/starrygal";
-export const TOUCHGAL_TOKEN_DOCS_URL = "https://developer.touchgal.com/docs/api";
+export const TOUCHGAL_TOKEN_DOCS_URL =
+  "https://developer.touchgal.com/docs/api";
 export type TouchGalAction =
   "status" | "search" | "detail" | "resources" | "patches";
 export interface TouchGalRequest {
@@ -38,6 +40,15 @@ const string = (value: unknown) =>
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.map(string).filter(Boolean) : [];
 
+function searchName(keyword: string): string {
+  const name = keyword.trim();
+  if ([...name].length < 3 || [...name].length > 100)
+    throw new Error(
+      "请填写 3～100 个字符的游戏名称，短标题可尝试原名或完整名称。",
+    );
+  return name;
+}
+
 export function validateEndpoint(value: string): string {
   const url = new URL(value.trim() || DEFAULT_TOUCHGAL_ENDPOINT);
   if (
@@ -52,7 +63,10 @@ export function validateEndpoint(value: string): string {
 }
 
 export function validateToken(value: string): string {
-  const trimmed = value.trim().replace(/^Bearer\s+/i, "").trim();
+  const trimmed = value
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   if (!trimmed) return "";
   if (trimmed.length > 512 || /[\r\n\s]/.test(trimmed))
     throw new Error("请填写不含空格或换行的有效 TouchGal Token。");
@@ -220,12 +234,8 @@ export function createTouchGalClient(
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
     return unwrapTouchGal(result);
   };
-  const search = async (keyword: string, signal: AbortSignal, page = 1) => {
-    const name = keyword.trim();
-    if ([...name].length < 3 || [...name].length > 100)
-      throw new Error(
-        "请填写 3～100 个字符的游戏名称，短标题可尝试原名或完整名称。",
-      );
+  const searchPage = async (keyword: string, signal: AbortSignal, page = 1) => {
+    const name = searchName(keyword);
     const data = await request("search", { keyword: name, page }, signal);
     const items: TouchGalCandidate[] = Array.isArray(data.items)
       ? data.items.flatMap((value) => {
@@ -236,7 +246,21 @@ export function createTouchGalClient(
             : [];
         })
       : [];
-    return { items, hasMore: object(data.pagination).hasMore === true };
+    return {
+      items,
+      hasMore: object(data.pagination).hasMore === true,
+      keyword: name,
+    };
+  };
+  const search = async (keyword: string, signal: AbortSignal, page = 1) => {
+    // Validate the original query even when it would yield a shorter fallback.
+    let result = await searchPage(keyword, signal, page);
+    if (page !== 1 || result.items.length || result.hasMore) return result;
+    for (const fallback of titleSearchKeywords(keyword).slice(1)) {
+      result = await searchPage(fallback, signal);
+      if (result.items.length || result.hasMore) break;
+    }
+    return result;
   };
   const detail = async (uniqueId: string, signal: AbortSignal) => {
     if (!/^[a-z\d]{8}$/i.test(uniqueId))
@@ -248,33 +272,42 @@ export function createTouchGalClient(
       throw new Error("条目资料不完整，请稍后重试。");
     return result;
   };
-  const canonical = (value: string) =>
-    value
-      .normalize("NFKC")
-      .toLocaleLowerCase()
-      .replace(/[^\p{L}\p{N}]/gu, "");
   const provider: GameMetadataProvider = {
     async searchByName(name, signal) {
-      const { items, hasMore } = await search(name, signal);
-      // Ambiguous titles always require an explicit choice. Never take the first fuzzy hit.
-      const exact = items.filter(
-        (item) => canonical(item.name) === canonical(name),
-      );
-      if (exact.length === 1 && !hasMore)
-        return detail(exact[0].uniqueId, signal);
-      if (items.length === 1 && !hasMore) {
-        const candidate = items[0];
-        const raw = await request(
-          "detail",
-          { uniqueId: candidate.uniqueId },
-          signal,
-        );
+      name = searchName(name);
+      const checkedAliases = new Set<string>();
+      // Preserve validation and cancellation behavior for the original query.
+      const keywords = titleSearchKeywords(name);
+      for (const keyword of keywords.length ? keywords : [name]) {
+        const { items, hasMore } = await searchPage(keyword, signal);
+        const unique = [
+          ...new Map(items.map((item) => [item.uniqueId, item])).values(),
+        ];
+        const matches = unique.filter((item) => sameGameTitle(item.name, name));
+        // Multiple matches or an incomplete page require an explicit choice.
+        if (matches.length > 1 || (matches.length && hasMore)) return null;
+        if (matches.length === 1) return detail(matches[0].uniqueId, signal);
         if (
-          [string(raw.name), ...strings(raw.aliases)].some(
-            (alias) => canonical(alias) === canonical(name),
+          unique.length === 1 &&
+          !hasMore &&
+          !checkedAliases.has(unique[0].uniqueId)
+        ) {
+          const candidate = unique[0];
+          checkedAliases.add(candidate.uniqueId);
+          const raw = await request(
+            "detail",
+            { uniqueId: candidate.uniqueId },
+            signal,
+          );
+          if (string(raw.uniqueId) !== candidate.uniqueId || !string(raw.name))
+            throw new Error("条目资料不完整，请稍后重试。");
+          if (
+            [string(raw.name), ...strings(raw.aliases)].some((alias) =>
+              sameGameTitle(alias, name),
+            )
           )
-        )
-          return parseTouchGalDetail(raw);
+            return parseTouchGalDetail(raw);
+        }
       }
       return null;
     },

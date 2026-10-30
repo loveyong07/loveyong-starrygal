@@ -89,9 +89,14 @@ export function TouchGalSourceDialog({
     }
   }
   return (
-    <Modal title="让故事，变得完整" subtitle="TouchGal 数据源与 Token 设置" close={close}>
+    <Modal
+      title="让故事，变得完整"
+      subtitle="TouchGal 数据源与 Token 设置"
+      close={close}
+    >
       <p className="gg-field-note">
-        按游戏名称补全封面、简介、截图、PV、会社、发售日、标签与社区评分。默认使用公共资料服务，若遇调用限制也可填入自行申请的 TouchGal Token。
+        按游戏名称补全封面、简介、截图、PV、会社、发售日、标签与社区评分。默认使用公共资料服务，若遇调用限制也可填入自行申请的
+        TouchGal Token。
       </p>
       <form
         onSubmit={(event) => {
@@ -190,15 +195,20 @@ export function TouchGalMatchDialog({
   client,
   close,
   apply,
+  selectionOnly = false,
+  autoSearch = false,
 }: {
   title: string;
   client: TouchGalClient;
   close: () => void;
   apply: (metadata: GameMetadata, replace: boolean) => Promise<void>;
+  selectionOnly?: boolean;
+  autoSearch?: boolean;
 }) {
   const [query, setQuery] = useState(title);
   const [items, setItems] = useState<TouchGalCandidate[]>([]);
   const [page, setPage] = useState(1);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [searched, setSearched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -206,7 +216,15 @@ export function TouchGalMatchDialog({
   const [replace, setReplace] = useState(false);
   const [selected, setSelected] = useState<GameMetadata | null>(null);
   const controller = useRef<AbortController | null>(null);
-  useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    const timer = autoSearch
+      ? window.setTimeout(() => void search(), 0)
+      : undefined;
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      controller.current?.abort();
+    };
+  }, []);
   async function run(operation: (signal: AbortSignal) => Promise<void>) {
     controller.current?.abort();
     const active = new AbortController();
@@ -225,18 +243,23 @@ export function TouchGalMatchDialog({
   async function search(next = 1) {
     setSelected(null);
     await run(async (signal) => {
-      const result = await client.search(query, signal, next);
+      const result = await client.search(
+        next === 1 ? query : searchKeyword,
+        signal,
+        next,
+      );
       if (signal.aborted) return;
       setItems(result.items);
       setPage(next);
+      setSearchKeyword(result.keyword);
       setHasMore(result.hasMore);
       setSearched(true);
     });
   }
   return (
     <Modal
-      title="匹配游戏资料"
-      subtitle="搜索并核对正确的 TouchGal 条目"
+      title={selectionOnly ? "搜索游戏作品" : "匹配游戏资料"}
+      subtitle="支持部分名称、外文词语或别名；至少 3 个字符，选择后再确认。"
       close={close}
     >
       <form
@@ -248,10 +271,21 @@ export function TouchGalMatchDialog({
       >
         <input
           aria-label="TouchGal 游戏名称"
-          placeholder="完整游戏名或原名，至少 3 个字符"
+          placeholder="部分名称或关键词，至少 3 个字符"
           value={query}
           maxLength={100}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            controller.current?.abort();
+            setQuery(event.target.value);
+            setBusy(false);
+            setSelected(null);
+            setItems([]);
+            setSearched(false);
+            setHasMore(false);
+            setPage(1);
+            setSearchKeyword("");
+            setError("");
+          }}
         />
         <button className="gg-button gg-primary" disabled={busy}>
           <MagnifyingGlassIcon size={17} />
@@ -274,16 +308,20 @@ export function TouchGalMatchDialog({
             {selected.developer} {selected.releaseDate}
           </p>
           <p>{selected.description?.slice(0, 400)}</p>
-          <label className="gg-check-field">
-            <input
-              type="checkbox"
-              checked={replace}
-              onChange={(event) => setReplace(event.target.checked)}
-            />
-            替换已有的简介、会社、发售日与接口封面
-          </label>
+          {!selectionOnly && (
+            <label className="gg-check-field">
+              <input
+                type="checkbox"
+                checked={replace}
+                onChange={(event) => setReplace(event.target.checked)}
+              />
+              替换已有的简介、会社、发售日与接口封面
+            </label>
+          )}
           <p className="gg-field-note">
-            默认只补全空白资料。自定义封面与手动设置的 PV 会保留。
+            {selectionOnly
+              ? "确认选择后返回添加窗口，核对本地启动路径后加入游戏库。"
+              : "默认只补全空白资料。自定义封面与手动设置的 PV 会保留。"}
           </p>
           <div className="gg-dialog-footer">
             <button
@@ -303,7 +341,7 @@ export function TouchGalMatchDialog({
                 })
               }
             >
-              确认匹配
+              {selectionOnly ? "确认选择" : "确认匹配"}
               <CheckIcon size={16} />
             </button>
           </div>
@@ -329,7 +367,7 @@ export function TouchGalMatchDialog({
           </div>
           {searched && !busy && items.length === 0 && (
             <p className="gg-field-note">
-              未找到作品。请尝试原名、完整名称，或检查资料设置中的分级选项。
+              未找到作品。可换用其他名称片段、外文词语或别名，或检查资料设置中的分级选项。
             </p>
           )}
           <div className="gg-dialog-footer">

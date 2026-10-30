@@ -6,9 +6,17 @@ export const REPOSITORY_URL =
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
 // Increment only when the announcement itself changes so each notice is shown once.
-export const NOTICE_VERSION = "2";
+export const NOTICE_VERSION = "3";
+// Permanent announcement. Future releases must only edit NOTICE_UPDATES below.
 export const NOTICE_TEXT =
-  "StarryGal 完全开源免费。现在可以从侧栏下载 Galgame 与补丁，应用也会在启动时检查新版本；发现更新后会通知你，是否前往下载由你决定。";
+  "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入";
+export const NOTICE_UPDATES = [
+  "记住游戏库排序和网格 / 列表选择，下次打开沿用上次设置。",
+  "自动查找过滤补丁、备份等辅助目录，所有扫描结果确认后再加入游戏库。",
+  "名称搜索兼容大小写、空格和标点差异；添加游戏可用至少 3 个字符的名称片段或关键词搜索，选中作品后确认添加。",
+  "每次进入游戏详情从顶部开始；窗口按钮融入界面，移除系统标题栏。",
+  "新版安装包支持在原安装目录覆盖升级，保留设置、游戏库和游玩记录。",
+];
 
 export interface GameExtras {
   tags: string[];

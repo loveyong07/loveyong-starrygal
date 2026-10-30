@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -41,6 +42,8 @@ import { useGameLauncher } from "@/features/launch/useGameLauncher";
 import { useGameProcessSync } from "@/features/launch/useGameProcess";
 import LaunchDialog from "@/features/launch/LaunchDialog";
 import { CloseBehaviorDialog } from "@/features/window/CloseBehaviorDialog";
+import WindowControls from "@/features/window/WindowControls";
+import { normalizeGameTitle } from "./title-matching";
 import {
   addGame,
   desktop,
@@ -94,7 +97,7 @@ import {
   validateToken,
 } from "./touchgal";
 import { touchgalTransport } from "./touchgal-transport";
-import { TouchGalSourceDialog } from "./TouchGalDialogs";
+import { TouchGalMatchDialog, TouchGalSourceDialog } from "./TouchGalDialogs";
 import {
   AboutDialog,
   AddGameDialog,
@@ -109,6 +112,7 @@ import "./galgame.css";
 type ModalKind =
   "add" | "appearance" | "source" | "about" | "notice" | "scan" | null;
 type Filter = "all" | GameStatus;
+type LibrarySort = "added" | "recent" | "name" | "time";
 type UpdateCheckStatus =
   "idle" | "checking" | "current" | "available" | "no-release" | "error";
 
@@ -186,7 +190,10 @@ export default function GalgameApp() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [sort, setSort] = useState("added");
+  const [sort, setSort] = useState<LibrarySort>("added");
+  const [libraryPreferencesReady, setLibraryPreferencesReady] = useState(false);
+  const preferenceWrites = useRef(Promise.resolve());
+  const main = useRef<HTMLElement>(null);
   const [modal, setModal] = useState<ModalKind>(null);
   const [noticeReady, setNoticeReady] = useState(false);
   const [utilitiesExpanded, setUtilitiesExpanded] = useState(false);
@@ -252,6 +259,12 @@ export default function GalgameApp() {
       setLoading(false);
     }
   }
+  function saveLibraryPreference(key: "sort" | "view", value: string) {
+    // Serialize writes so rapid changes cannot finish in the wrong order.
+    preferenceWrites.current = preferenceWrites.current
+      .then(() => writePreference("library." + key, value))
+      .catch(() => setToast("游戏库显示设置未能保存，请重试。"));
+  }
   function replaceGame(updated: LibraryGame) {
     setGames((current) =>
       current.map((item) => (item.id === updated.id ? updated : item)),
@@ -297,6 +310,33 @@ export default function GalgameApp() {
   useEffect(() => {
     void refresh();
   }, [revision]);
+  useEffect(() => {
+    let active = true;
+    void Promise.all([
+      readPreference("library.sort"),
+      readPreference("library.view"),
+    ])
+      .then(([savedSort, savedView]) => {
+        if (!active) return;
+        if (["added", "recent", "name", "time"].includes(savedSort || ""))
+          setSort(savedSort as LibrarySort);
+        if (savedView === "grid" || savedView === "list") setView(savedView);
+      })
+      .catch(() => {
+        if (active) setToast("游戏库显示设置暂时无法读取。");
+      })
+      .finally(() => {
+        if (active) setLibraryPreferencesReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    // The scrolling element is this pane, not window. Reset before painting a
+    // new route, including opening another game from an already scrolled view.
+    main.current?.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname]);
   useEffect(() => {
     const timer = window.setTimeout(() => void checkForUpdates(false), 1800);
     const interval = window.setInterval(
@@ -649,37 +689,15 @@ export default function GalgameApp() {
         setToast("扫描已取消，已有游戏记录保留。");
         return;
       }
-      const certain = report.games.filter((item) => item.recognized);
-      const uncertain = report.games.filter((item) => !item.recognized);
-      let count = 0;
-      const failed: DiscoveredGame[] = [];
-      for (const item of certain) {
-        try {
-          await addGame({
-            title: item.title,
-            installPath: item.installPath,
-            exePath: item.exePath,
-            source: item.source,
-            steamAppId: item.steamAppId,
-          });
-          count++;
-        } catch {
-          failed.push(item);
-        }
-      }
-      await refresh();
       if (first) await writePreference("firstScan", "done");
-      const pending = [...failed, ...uncertain];
-      if (pending.length) {
-        setCandidates(pending);
+      if (report.games.length) {
+        setCandidates(report.games);
         setModal("scan");
       }
       setToast(
-        count
-          ? "自动收录了 " + count + " 部游戏，其余候选可继续确认。"
-          : pending.length
-            ? "扫描完成，请确认这些游戏是否属于你的 Galgame 收藏。"
-            : "没有发现新的游戏，可指定文件夹继续扫描。",
+        report.games.length
+          ? "发现 " + report.games.length + " 部候选游戏，确认后加入游戏库。"
+          : "没有发现新的游戏，可指定文件夹继续扫描。",
       );
       if (report.warnings.length) setToast(report.warnings.join(" "));
     } catch (cause) {
@@ -762,6 +780,7 @@ export default function GalgameApp() {
   }
 
   const favorites = games.filter((item) => item.favorite);
+  const normalizedQuery = normalizeGameTitle(query);
   const routeGames =
     route === "favorites"
       ? favorites
@@ -774,11 +793,13 @@ export default function GalgameApp() {
     .filter(
       (item) =>
         (filter === "all" || item.status === filter) &&
-        (!query ||
-          [item.title, item.originalTitle || "", ...item.tags]
-            .join(" ")
-            .toLocaleLowerCase()
-            .includes(query.toLocaleLowerCase())),
+        (!normalizedQuery ||
+          [
+            item.title,
+            item.originalTitle || "",
+            item.sourceTitle || "",
+            ...item.tags,
+          ].some((name) => normalizeGameTitle(name).includes(normalizedQuery))),
     )
     .sort((a, b) =>
       sort === "name"
@@ -1012,11 +1033,11 @@ export default function GalgameApp() {
       </aside>
 
       <div className="gg-workspace">
-        <header className="gg-topbar">
-          <div className="gg-breadcrumb">
-            <span>我的空间</span>
-            <span>/</span>
-            <strong>
+        <header className="gg-topbar" data-tauri-drag-region>
+          <div className="gg-breadcrumb" data-tauri-drag-region>
+            <span data-tauri-drag-region>我的空间</span>
+            <span data-tauri-drag-region>/</span>
+            <strong data-tauri-drag-region>
               {game
                 ? game.title
                 : route === "favorites"
@@ -1043,9 +1064,11 @@ export default function GalgameApp() {
                 <ArrowUpRightIcon size={14} />
               </ExternalLink>
             ) : null}
+            {desktop && <WindowControls onError={setToast} />}
           </div>
         </header>
         <main
+          ref={main}
           className={"gg-main" + (detailId === null ? " gg-library-page" : "")}
         >
           {busy && (
@@ -1203,7 +1226,11 @@ export default function GalgameApp() {
                         aria-label="封面网格"
                         aria-pressed={view === "grid"}
                         className={view === "grid" ? "selected" : ""}
-                        onClick={() => setView("grid")}
+                        disabled={!libraryPreferencesReady}
+                        onClick={() => {
+                          setView("grid");
+                          saveLibraryPreference("view", "grid");
+                        }}
                       >
                         <SquaresFourIcon size={18} />
                       </button>
@@ -1211,7 +1238,11 @@ export default function GalgameApp() {
                         aria-label="列表视图"
                         aria-pressed={view === "list"}
                         className={view === "list" ? "selected" : ""}
-                        onClick={() => setView("list")}
+                        disabled={!libraryPreferencesReady}
+                        onClick={() => {
+                          setView("list");
+                          saveLibraryPreference("view", "list");
+                        }}
                       >
                         <ListIcon size={19} />
                       </button>
@@ -1240,7 +1271,11 @@ export default function GalgameApp() {
                       <select
                         aria-label="游戏排序"
                         value={sort}
-                        onChange={(event) => setSort(event.target.value)}
+                        disabled={!libraryPreferencesReady}
+                        onChange={(event) => {
+                          setSort(event.target.value as LibrarySort);
+                          saveLibraryPreference("sort", event.target.value);
+                        }}
                       >
                         <option value="added">最近添加</option>
                         <option value="recent">最近打开</option>
@@ -1463,6 +1498,20 @@ export default function GalgameApp() {
       {modal === "add" && (
         <AddGameDialog
           close={() => setModal(null)}
+          renderSearch={
+            sourceReady
+              ? ({ query, select, close }) => (
+                  <TouchGalMatchDialog
+                    title={query}
+                    client={metadataClient}
+                    close={close}
+                    apply={async (metadata) => select(metadata)}
+                    selectionOnly
+                    autoSearch
+                  />
+                )
+              : undefined
+          }
           done={async (item) => {
             await refresh();
             setModal(null);
