@@ -7,6 +7,7 @@ import {
   touchgalLink,
   unwrapTouchGal,
   validateEndpoint,
+  validateToken,
 } from "../src/features/galgame/touchgal.ts";
 import { extras } from "../src/features/galgame/model.ts";
 
@@ -189,4 +190,19 @@ test("relay and external link validation reject injected destinations", async ()
   );
   assert.equal(items.length, 1);
   assert.equal(items[0].name, "资源");
+  assert.equal(validateToken("  Bearer tg_live_12345  "), "tg_live_12345");
+  assert.equal(validateToken("   "), "");
+  assert.throws(() => validateToken("bad token"));
+  let capturedToken = "";
+  const customClient = createTouchGalClient(
+    endpoint,
+    false,
+    async (req) => {
+      capturedToken = req.apiToken || "";
+      return envelope({ ready: true });
+    },
+    "Bearer tg_custom_token",
+  );
+  await customClient.status(new AbortController().signal);
+  assert.equal(capturedToken, "tg_custom_token");
 });

@@ -45,6 +45,7 @@ function send(res, status, body, ttl = 0, retryAfter) {
   // Public metadata, no cookies. This also supports the GitHub Pages preview.
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
   res.setHeader(
     "Cache-Control",
     ttl
@@ -208,6 +209,15 @@ function visitorAllowed(req) {
   return ++item.count <= 30;
 }
 
+function customBearer(req) {
+  const raw = req.headers?.authorization || req.headers?.Authorization;
+  const header = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof header !== "string") return "";
+  const trimmed = header.replace(/^Bearer\s+/i, "").trim();
+  if (!trimmed || trimmed.length > 512 || /[\r\n\s]/.test(trimmed)) return "";
+  return trimmed;
+}
+
 export function createHandler({
   fetchImpl = fetch,
   token = () => process.env.TOUCHGAL_API_TOKEN,
@@ -216,6 +226,10 @@ export function createHandler({
     if (req.method === "OPTIONS") {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Authorization, Content-Type",
+      );
       res.status(204).end();
       return;
     }
@@ -231,7 +245,8 @@ export function createHandler({
       failure(res, 400, "BAD_REQUEST");
       return;
     }
-    const secret = token()?.trim();
+    const userSecret = customBearer(req);
+    const secret = userSecret || token()?.trim();
     if (!secret) {
       failure(res, 503, "NOT_CONFIGURED");
       return;
@@ -240,13 +255,14 @@ export function createHandler({
       failure(res, 429, "RATE_LIMITED", 60);
       return;
     }
+    const ttl = userSecret ? 0 : parsed.ttl;
     // The token hash isolates a rotated credential without retaining its plaintext as a cache key.
     const key =
       createHash("sha256").update(secret).digest("hex").slice(0, 12) +
       parsed.upstream.href;
     const cached = cache.get(key);
     if (cached && cached.expires > Date.now()) {
-      send(res, 200, cached.body, parsed.ttl);
+      send(res, 200, cached.body, ttl);
       return;
     }
     if (cached) cache.delete(key);
@@ -331,7 +347,7 @@ export function createHandler({
         body: result.body,
         expires: Date.now() + parsed.ttl * 1000,
       });
-      send(res, 200, result.body, parsed.ttl);
+      send(res, 200, result.body, ttl);
     } catch {
       failure(res, 503, "UPSTREAM_UNAVAILABLE");
     }

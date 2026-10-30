@@ -91,6 +91,7 @@ import {
   DEFAULT_TOUCHGAL_ENDPOINT,
   metadataPatch,
   validateEndpoint,
+  validateToken,
 } from "./touchgal";
 import { touchgalTransport } from "./touchgal-transport";
 import { TouchGalSourceDialog } from "./TouchGalDialogs";
@@ -203,10 +204,17 @@ export default function GalgameApp() {
   const [loadError, setLoadError] = useState("");
   const [sourceUrl, setSourceUrl] = useState(DEFAULT_TOUCHGAL_ENDPOINT);
   const [allowNsfw, setAllowNsfw] = useState(false);
+  const [sourceToken, setSourceToken] = useState("");
   const [sourceReady, setSourceReady] = useState(false);
   const metadataClient = useMemo(
-    () => createTouchGalClient(sourceUrl, allowNsfw, touchgalTransport),
-    [sourceUrl, allowNsfw],
+    () =>
+      createTouchGalClient(
+        sourceUrl,
+        allowNsfw,
+        touchgalTransport,
+        sourceToken,
+      ),
+    [sourceUrl, allowNsfw, sourceToken],
   );
   const [metadataBusy, setMetadataBusy] = useState(false);
   const [metadataMessage, setMetadataMessage] = useState("");
@@ -325,13 +333,19 @@ export default function GalgameApp() {
     void Promise.all([
       readPreference("touchgal.endpoint"),
       readPreference("touchgal.allowNsfw"),
+      readPreference("touchgal.token"),
     ])
-      .then(([url, allow]) => {
+      .then(([url, allow, token]) => {
         if (!active) return;
         try {
           setSourceUrl(validateEndpoint(url || DEFAULT_TOUCHGAL_ENDPOINT));
         } catch {
           setSourceUrl(DEFAULT_TOUCHGAL_ENDPOINT);
+        }
+        try {
+          setSourceToken(validateToken(token || ""));
+        } catch {
+          setSourceToken("");
         }
         setAllowNsfw(allow === "true");
         setSourceReady(true);
@@ -969,6 +983,15 @@ export default function GalgameApp() {
             className="gg-utility-item"
             onClick={() => {
               setUtilitiesExpanded(false);
+              setModal("source");
+            }}
+          >
+            资料设置
+          </button>
+          <button
+            className="gg-utility-item"
+            onClick={() => {
+              setUtilitiesExpanded(false);
               setModal("appearance");
             }}
           >
@@ -1131,6 +1154,13 @@ export default function GalgameApp() {
                   <p>把散落在磁盘里的故事，慢慢收进日常。</p>
                 </div>
                 <div className="gg-heading-actions">
+                  <button
+                    className="gg-button gg-secondary"
+                    onClick={() => setModal("source")}
+                  >
+                    <SlidersHorizontalIcon size={18} />
+                    资料设置
+                  </button>
                   <button
                     className="gg-button gg-secondary"
                     disabled={!sourceReady}
@@ -1453,12 +1483,15 @@ export default function GalgameApp() {
         <TouchGalSourceDialog
           endpoint={sourceUrl}
           allowNsfw={allowNsfw}
+          apiToken={sourceToken}
           close={() => setModal(null)}
-          save={async (url, allow) => {
+          save={async (url, allow, token) => {
             await writePreference("touchgal.endpoint", url);
             await writePreference("touchgal.allowNsfw", String(allow));
+            await writePreference("touchgal.token", token);
             setSourceUrl(url);
             setAllowNsfw(allow);
+            setSourceToken(token);
             setModal(null);
             setToast("资料设置已保存，可在游戏库点击“补全资料”。");
           }}

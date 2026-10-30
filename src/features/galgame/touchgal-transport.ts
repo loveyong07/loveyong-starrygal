@@ -11,6 +11,7 @@ export const touchgalTransport: TouchGalTransport = async (request, signal) => {
     uniqueId: request.uniqueId ?? null,
     page: request.page ?? null,
     allowNsfw: request.allowNsfw,
+    apiToken: request.apiToken ?? null,
   });
   if (signal.aborted) throw new DOMException("Aborted", "AbortError");
   return result;

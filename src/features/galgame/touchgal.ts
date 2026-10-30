@@ -3,6 +3,7 @@ import type { GameMetadata, GameMetadataProvider } from "./metadata.ts";
 import { parseTouchGalIntroduction } from "./touchgal-introduction.ts";
 
 export const DEFAULT_TOUCHGAL_ENDPOINT = "https://loveyong07.top/api/starrygal";
+export const TOUCHGAL_TOKEN_DOCS_URL = "https://developer.touchgal.com/docs/api";
 export type TouchGalAction =
   "status" | "search" | "detail" | "resources" | "patches";
 export interface TouchGalRequest {
@@ -12,6 +13,7 @@ export interface TouchGalRequest {
   uniqueId?: string;
   page?: number;
   allowNsfw: boolean;
+  apiToken?: string;
 }
 export type TouchGalTransport = (
   request: TouchGalRequest,
@@ -49,6 +51,14 @@ export function validateEndpoint(value: string): string {
   return url.href.replace(/\/$/, "");
 }
 
+export function validateToken(value: string): string {
+  const trimmed = value.trim().replace(/^Bearer\s+/i, "").trim();
+  if (!trimmed) return "";
+  if (trimmed.length > 512 || /[\r\n\s]/.test(trimmed))
+    throw new Error("请填写不含空格或换行的有效 TouchGal Token。");
+  return trimmed;
+}
+
 export function touchgalLink(value: unknown): string | null {
   const safe = mediaUrl(value);
   if (!safe) return null;
@@ -66,8 +76,10 @@ export function unwrapTouchGal(value: unknown): Record<string, unknown> {
   if (envelope.success !== true) {
     const code = string(object(envelope.error).code);
     const messages: Record<string, string> = {
-      UNAUTHORIZED: "TouchGal 密钥无效，请联系维护者更新服务端配置。",
-      NOT_CONFIGURED: "资料服务尚未配置，请联系维护者。",
+      UNAUTHORIZED:
+        "TouchGal 密钥无效，请检查资料设置中的自定义 Token 或联系维护者。",
+      NOT_CONFIGURED:
+        "资料服务尚未配置，可在资料设置中填写自定义 Token 或联系维护者。",
       RATE_LIMITED: "资料查询额度暂时用尽，请稍后重试。",
       BAD_REQUEST: "请填写 3～100 个字符的游戏名称。",
       UPSTREAM_UNAVAILABLE: "TouchGal 暂时不可用，请稍后重试。",
@@ -85,10 +97,14 @@ export const fetchTouchGal: TouchGalTransport = async (request, signal) => {
   if (request.keyword) url.searchParams.set("keyword", request.keyword);
   if (request.uniqueId) url.searchParams.set("uniqueId", request.uniqueId);
   if (request.page) url.searchParams.set("page", String(request.page));
+  const token = request.apiToken ? validateToken(request.apiToken) : "";
   const response = await fetch(url, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
     credentials: "omit",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   if (!response.headers.get("content-type")?.includes("application/json"))
     throw new Error("资料接口返回的不是 JSON，请检查服务地址或部署状态。");
@@ -181,8 +197,10 @@ export function createTouchGalClient(
   endpoint: string,
   allowNsfw = false,
   transport = fetchTouchGal,
+  apiToken = "",
 ) {
   const base = validateEndpoint(endpoint);
+  const token = validateToken(apiToken);
   const request = async (
     action: TouchGalAction,
     params: Partial<TouchGalRequest>,
@@ -190,7 +208,13 @@ export function createTouchGalClient(
   ) => {
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
     const result = await transport(
-      { endpoint: base, action, allowNsfw, ...params },
+      {
+        endpoint: base,
+        action,
+        allowNsfw,
+        ...(token ? { apiToken: token } : {}),
+        ...params,
+      },
       signal,
     );
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");

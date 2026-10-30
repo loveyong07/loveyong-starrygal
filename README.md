@@ -23,7 +23,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 
 应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用 Logo、桌面图标和网页图标统一采用用户原创图片提取的人物抱星图案。
 
-本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.2.0**，修改日期为 **2026-10-30**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
+本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.2.1**，修改日期为 **2026-10-30**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
 
 ## 功能
 
@@ -44,6 +44,14 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 
 > 本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入
 
+## 致歉
+
+1. 由于API调用限制，可能无法一次性导入所有游戏资料，可以稍后重试（如果访问次数过多，也需要第二天>_<)
+2. 由于API密钥部署在vercel服务器上（经济能力有限），直连的用户也许加载缓慢，可以科学上网尝试>_<
+3. 由于第一次尝试做启动器，功能或者内容不完全，请谅解
+4. 由于API调用的限制，开放了token自定义，可以自行前往TouchGAL API获取token
+5. 反馈：https://loveyong07.top/contact (ฅ•.•ฅ)ﻌﻌﻌ♥️
+
 ## 使用
 
 1. 从 [最新发行版](https://github.com/loveyong07/loveyong-starrygal/releases/latest) 下载 `windows_x64_setup.exe`，运行中文安装向导并通过“浏览”选择安装文件夹；也可下载便携版直接运行。打开后阅读公告，进入游戏库。
@@ -59,7 +67,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 
 ## TouchGal API
 
-按 [TouchGal 官方 API 文档](https://developer.touchgal.com/docs/api) 接入。默认公开资料接口为 `https://loveyong07.top/api/starrygal`，安装后无需填写开发者密钥。桌面版通过 Rust 请求资料服务，网页预览通过无 Cookie 的公开接口请求；资料设置中可以测试连接或修改服务地址。
+按 [TouchGal 官方 API 文档](https://developer.touchgal.com/docs/api) 接入。默认公开资料接口为 `https://loveyong07.top/api/starrygal`，安装后无需填写开发者密钥；若遇公共调用额度限制，可在“资料设置”中填入自行从 TouchGal API 获取的自定义 Token。桌面版通过 Rust 请求资料服务，网页预览通过无 Cookie 的公开接口请求；资料设置中可以测试连接、自定义 Token 或修改服务地址。
 
 - `src/features/galgame/touchgal.ts`：搜索、详情、字段归一化、严格匹配、取消过期结果与资料合并。
 - `src-tauri/src/commands/touchgal.rs`：桌面 HTTP 请求、参数校验、超时与响应大小限制。

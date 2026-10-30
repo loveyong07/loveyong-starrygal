@@ -9,7 +9,9 @@ import { desktop } from "./library";
 import {
   createTouchGalClient,
   DEFAULT_TOUCHGAL_ENDPOINT,
+  TOUCHGAL_TOKEN_DOCS_URL,
   validateEndpoint,
+  validateToken,
   type TouchGalCandidate,
   type TouchGalClient,
 } from "./touchgal";
@@ -45,16 +47,19 @@ export function ResourceLink({
 export function TouchGalSourceDialog({
   endpoint,
   allowNsfw,
+  apiToken = "",
   close,
   save,
 }: {
   endpoint: string;
   allowNsfw: boolean;
+  apiToken?: string;
   close: () => void;
-  save: (url: string, allowNsfw: boolean) => Promise<void>;
+  save: (url: string, allowNsfw: boolean, apiToken: string) => Promise<void>;
 }) {
   const [value, setValue] = useState(endpoint);
   const [allow, setAllow] = useState(allowNsfw);
+  const [token, setToken] = useState(apiToken);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -72,6 +77,7 @@ export function TouchGalSourceDialog({
         validateEndpoint(value),
         allow,
         touchgalTransport,
+        validateToken(token),
       );
       await client.status(active.signal);
       if (!active.signal.aborted) setStatus("连接成功，可以查询游戏资料。");
@@ -83,28 +89,48 @@ export function TouchGalSourceDialog({
     }
   }
   return (
-    <Modal title="让故事，变得完整" subtitle="TouchGal 数据源" close={close}>
+    <Modal title="让故事，变得完整" subtitle="TouchGal 数据源与 Token 设置" close={close}>
       <p className="gg-field-note">
-        按游戏名称补全封面、简介、截图、PV、会社、发售日、标签与社区评分。密钥由资料服务保管，用户无需填写。
+        按游戏名称补全封面、简介、截图、PV、会社、发售日、标签与社区评分。默认使用公共资料服务，若遇调用限制也可填入自行申请的 TouchGal Token。
       </p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
           setError("");
           let url: string;
+          let cleanedToken: string;
           try {
             url = validateEndpoint(value);
+            cleanedToken = validateToken(token);
           } catch (cause) {
             setError((cause as Error).message);
             return;
           }
           setBusy(true);
-          void save(url, allow).catch((cause) => {
+          void save(url, allow, cleanedToken).catch((cause) => {
             setError(cause instanceof Error ? cause.message : "设置保存失败。");
             setBusy(false);
           });
         }}
       >
+        <label className="gg-field">
+          自定义 TouchGal Token（可选）
+          <input
+            type="password"
+            autoComplete="off"
+            value={token}
+            placeholder="留空则使用默认公共额度，可填自行获取的 Token"
+            onChange={(event) => {
+              setToken(event.target.value);
+              setStatus("");
+            }}
+          />
+        </label>
+        <div className="gg-source-credit">
+          <ResourceLink href={TOUCHGAL_TOKEN_DOCS_URL}>
+            前往 TouchGal API 获取 Token
+          </ResourceLink>
+        </div>
         <label className="gg-field">
           资料服务地址
           <input
