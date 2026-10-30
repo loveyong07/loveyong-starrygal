@@ -10,6 +10,7 @@ import {
   settingsGetAll,
   settingsSet,
   settingsDelete,
+  syncAssetScope,
 } from "@/lib/db";
 import type { Game, GameInput, GamePatch } from "@/types/game";
 import {
@@ -321,6 +322,7 @@ export async function listGames(): Promise<LibraryGame[]> {
     gamesTagsGet(),
     tagsList(),
     settingsGetAll(),
+    syncAssetScope().catch(() => 0),
   ]);
   const names = new Map(tags.map((tag) => [tag.id, tag.name]));
   const perGame = new Map<number, string[]>();

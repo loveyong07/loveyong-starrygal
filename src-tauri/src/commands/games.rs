@@ -131,6 +131,11 @@ pub async fn games_list(
     }
 
     let games = query.fetch_all(&pool).await?;
+    for game in &games {
+        if let Some(path) = &game.cover_path {
+            crate::allow_asset_file(&app, path);
+        }
+    }
     Ok(games)
 }
 

@@ -26,12 +26,20 @@ pub async fn sync_asset_scope(app: AppHandle) -> CmdResult<usize> {
             granted += 1;
         }
     }
-    let custom: Vec<(Option<String>,)> = sqlx::query_as("SELECT value FROM settings WHERE key LIKE 'game_cover:%'")
-        .fetch_all(&pool).await?;
+    let custom: Vec<(Option<String>,)> = sqlx::query_as(
+        "SELECT value FROM settings WHERE key LIKE 'game_cover:%' OR key LIKE 'opengal.game.%'",
+    )
+    .fetch_all(&pool)
+    .await?;
     for (raw,) in custom {
         if let Some(value) = raw.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()) {
-            if let Some(path) = value.get("customPath").and_then(|p| p.as_str()) {
-                if std::path::Path::new(path).is_file() { crate::allow_asset_file(&app, path); granted += 1; }
+            for field in ["customPath", "customCoverPath"] {
+                if let Some(path) = value.get(field).and_then(|p| p.as_str()) {
+                    if std::path::Path::new(path).is_file() {
+                        crate::allow_asset_file(&app, path);
+                        granted += 1;
+                    }
+                }
             }
         }
     }
