@@ -2732,3 +2732,127 @@
     gap: 16px;
   }
 }
+.gg-check-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: var(--gg-muted, #c7c9dc);
+  font-size: 13px;
+}
+.gg-check-field input {
+  accent-color: #a69ee8;
+  width: 17px;
+  height: 17px;
+}
+.gg-source-credit {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  margin: 14px 0;
+  opacity: 0.85;
+}
+.gg-source-credit a,
+.gg-resource-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: inherit;
+}
+.gg-story-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.gg-source-results {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.gg-source-results > button {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+.gg-source-results > button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.gg-source-results span {
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0.65;
+}
+.gg-match-preview {
+  margin-top: 20px;
+}
+.gg-match-preview > img {
+  width: 170px;
+  max-height: 140px;
+  object-fit: cover;
+  float: right;
+  margin: 0 0 15px 20px;
+  border-radius: 10px;
+}
+.gg-match-preview > p {
+  font-size: 13px;
+  line-height: 1.9;
+  opacity: 0.8;
+  white-space: pre-line;
+}
+.gg-match-preview > .gg-check-field {
+  clear: both;
+}
+.gg-video-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.gg-video-form .gg-field {
+  margin: 0;
+}
+.gg-video-form .gg-button {
+  justify-self: start;
+}
+.gg-resources-panel {
+  margin: 22px 0;
+  padding: 28px 32px;
+  border-radius: 22px;
+}
+.gg-resources-panel h2 {
+  margin: 7px 0 20px;
+  font-size: 21px;
+}
+.gg-resource-tabs {
+  display: flex;
+  gap: 12px;
+}
+.gg-resource-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+.gg-resource-list article {
+  padding: 16px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.gg-resource-list p {
+  font-size: 12px;
+  line-height: 1.7;
+  opacity: 0.7;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

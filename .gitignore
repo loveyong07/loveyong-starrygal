@@ -65,8 +65,10 @@ dist-ssr
 /CHANGELOG.md
 /AGENTS.md
 /.vscode/
-/.github/workflows/release.yml
 /.github/ISSUE_TEMPLATE/
 /scripts/check-release.mjs
 /scripts/cdp-eval.mjs
 /scripts/cdp-shot.mjs
+
+# Local deployment metadata
+.vercel/

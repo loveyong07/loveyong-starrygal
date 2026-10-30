@@ -2,16 +2,21 @@ import { mediaUrl, normalizeTags } from "./model.ts";
 
 export interface GameMetadata {
   title?: string;
-  originalTitle?: string;
+  originalTitle?: string | null;
   coverUrl?: string | null;
   description?: string | null;
   developer?: string | null;
   releaseDate?: string | null;
   tags?: string[];
   videoUrl?: string | null;
+  touchgalId?: string | null;
+  touchgalUrl?: string | null;
+  sourceTitle?: string | null;
+  communityRating?: number | null;
+  communityRatingCount?: number;
 }
 
-/** Implement this adapter once the user supplies the actual TouchGal contract. */
+/** A metadata lookup never modifies the user's library itself. */
 export interface GameMetadataProvider {
   searchByName(name: string, signal: AbortSignal): Promise<GameMetadata | null>;
 }

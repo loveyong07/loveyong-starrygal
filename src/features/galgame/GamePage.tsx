@@ -17,7 +17,14 @@ import {
 import { coverSrc } from "@/lib/asset";
 import { formatPlayTime } from "@/types/game";
 import { gameCoverImport } from "@/lib/db";
-import { normalizeTags, statusOf, type LibraryGame } from "./model";
+import { mediaUrl, normalizeTags, statusOf, type LibraryGame } from "./model";
+import {
+  ResourceLink,
+  TouchGalMatchDialog,
+  TouchGalResources,
+} from "./TouchGalDialogs";
+import type { GameMetadata } from "./metadata";
+import type { TouchGalClient } from "./touchgal";
 import { desktop, savePreviewCover } from "./library";
 import { Modal } from "./StudioDialogs";
 
@@ -33,6 +40,10 @@ export default function GamePage({
   launch,
   remove,
   metadataBusy,
+  metadataMessage,
+  metadataClient,
+  applyMetadata,
+  saveVideo,
 }: {
   game: LibraryGame;
   back: () => void;
@@ -45,6 +56,10 @@ export default function GamePage({
   launch: () => void;
   remove: () => void;
   metadataBusy: boolean;
+  metadataMessage: string;
+  metadataClient: TouchGalClient;
+  applyMetadata: (result: GameMetadata, replace: boolean) => Promise<void>;
+  saveVideo: (value: string | null) => Promise<void>;
 }) {
   const [tagDraft, setTagDraft] = useState("");
   const [editing, setEditing] = useState(false);
@@ -60,6 +75,16 @@ export default function GamePage({
   const [reviewDraft, setReviewDraft] = useState(game.notes || "");
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
+  const [matching, setMatching] = useState(false);
+  const [videoDraft, setVideoDraft] = useState(game.videoUrl || "");
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoNotice, setVideoNotice] = useState("");
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoIsPage = game.videoUrl
+    ? /(^|\.)(bilibili\.com|b23\.tv|youtube\.com|youtu\.be|vimeo\.com)$/.test(
+        new URL(game.videoUrl).hostname,
+      )
+    : false;
   const coverInput = useRef<HTMLInputElement>(null);
   const src = coverSrc(game.customCoverPath || game.coverPath);
   const status = statusOf(game);
@@ -186,7 +211,7 @@ export default function GamePage({
             <div className="gg-game-art-empty">
               <ImageSquareIcon size={55} weight="light" />
               <span>封面待补充</span>
-              <small>TouchGal · 等待连接</small>
+              <small>可自动补全或手动上传</small>
             </div>
           )}
           <div className="gg-cover-actions">
@@ -326,13 +351,38 @@ export default function GamePage({
               <span className="gg-section-kicker">THE STORY</span>
               <h2>关于这段故事</h2>
             </div>
+            <button
+              className="gg-button gg-secondary"
+              disabled={metadataBusy}
+              onClick={() => setMatching(true)}
+            >
+              匹配资料
+            </button>
           </header>
+          {metadataMessage && (
+            <p className="gg-field-note" role="status">
+              {metadataMessage}
+            </p>
+          )}
+          {game.touchgalUrl && (
+            <div className="gg-source-credit">
+              <ResourceLink href={game.touchgalUrl}>
+                资料来源 · TouchGal
+              </ResourceLink>
+              {game.communityRating !== null && (
+                <span>
+                  社区评分 {game.communityRating.toFixed(1)} / 10 ·{" "}
+                  {game.communityRatingCount} 人
+                </span>
+              )}
+            </div>
+          )}
           {game.description ? (
             <p className="gg-description">{game.description}</p>
           ) : (
             <div className="gg-story-blank">
               <p>故事简介，暂时留白。</p>
-              <span>接入 TouchGal API 后，将根据正确游戏名自动补全。</span>
+              <span>填写正确名称可自动查询，也可点击“匹配资料”选择条目。</span>
             </div>
           )}
           <div className="gg-tags-section">
@@ -393,21 +443,95 @@ export default function GamePage({
               宣传影片<span>PV / OP</span>
             </h2>
           </header>
-          {game.videoUrl ? (
+          {game.videoUrl && !videoIsPage && !videoFailed ? (
             <video
               key={game.videoUrl}
               src={game.videoUrl}
               controls
               preload="metadata"
               aria-label={game.title + "宣传影片"}
+              onError={() => {
+                setVideoFailed(true);
+                setVideoNotice(
+                  "此链接无法直接播放，可在浏览器中查看或更换链接。",
+                );
+              }}
             />
           ) : (
             <div className="gg-film-blank">
               <PlayIcon size={36} weight="light" />
-              <span>暂无宣传影片</span>
-              <small>影片位置已为这段故事留好</small>
+              <span>{videoIsPage ? "宣传影片已关联" : "暂无宣传影片"}</span>
+              <small>
+                {videoIsPage
+                  ? "点击下方链接前往视频页面播放"
+                  : "添加官方 PV / OP 链接，收藏故事的声音与画面"}
+              </small>
             </div>
           )}
+          {game.videoUrl && (
+            <div className="gg-source-credit">
+              <ResourceLink href={game.videoUrl}>在浏览器中播放</ResourceLink>
+            </div>
+          )}
+          <form
+            className="gg-video-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const url = videoDraft.trim() ? mediaUrl(videoDraft) : null;
+              if (
+                videoDraft.trim() &&
+                (!url ||
+                  new URL(url).protocol !== "https:" ||
+                  new URL(url).username ||
+                  new URL(url).password)
+              ) {
+                setVideoNotice("请填写有效且不含账号密码的 HTTPS 视频链接。");
+                return;
+              }
+              setVideoBusy(true);
+              setVideoNotice("");
+              void saveVideo(url)
+                .then(() => {
+                  setVideoFailed(false);
+                  setVideoNotice(
+                    url ? "宣传影片链接已保存。" : "宣传影片链接已移除。",
+                  );
+                })
+                .catch(() => setVideoNotice("链接保存失败，请重试。"))
+                .finally(() => setVideoBusy(false));
+            }}
+          >
+            <label className="gg-field">
+              PV / OP 链接
+              <input
+                type="url"
+                value={videoDraft}
+                placeholder="https://…（MP4 / WebM 或视频页面）"
+                onChange={(event) => setVideoDraft(event.target.value)}
+              />
+            </label>
+            <button className="gg-button gg-secondary" disabled={videoBusy}>
+              保存影片链接
+            </button>
+          </form>
+          {videoNotice && (
+            <p className="gg-field-note" role="status">
+              {videoNotice}
+            </p>
+          )}
+          <p className="gg-field-note">
+            TouchGal API 暂未提供 PV，可手动添加。
+          </p>
+          <div className="gg-source-credit">
+            <ResourceLink
+              href={
+                "https://search.bilibili.com/all?keyword=" +
+                encodeURIComponent(game.title + " 官方 PV OP")
+              }
+            >
+              查找宣传影片
+            </ResourceLink>
+          </div>
           <div className="gg-game-path">
             <span>游戏位置</span>
             <p title={game.installPath}>{game.installPath}</p>
@@ -418,6 +542,19 @@ export default function GamePage({
           </button>
         </section>
       </div>
+      <TouchGalResources
+        key={game.touchgalId || "none"}
+        uniqueId={game.touchgalId}
+        client={metadataClient}
+      />
+      {matching && (
+        <TouchGalMatchDialog
+          title={game.title}
+          client={metadataClient}
+          close={() => setMatching(false)}
+          apply={applyMetadata}
+        />
+      )}
       <section
         className="gg-review-panel gg-glass"
         aria-labelledby="gg-review-title"

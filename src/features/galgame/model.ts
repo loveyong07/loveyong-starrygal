@@ -17,6 +17,11 @@ export interface GameExtras {
   visitedAt: string | null;
   source: "local" | "steam";
   steamAppId: string | null;
+  touchgalId: string | null;
+  touchgalUrl: string | null;
+  sourceTitle: string | null;
+  communityRating: number | null;
+  communityRatingCount: number;
 }
 
 export interface LibraryGame extends Game, GameExtras {}
@@ -66,6 +71,35 @@ export function extras(value: unknown): GameExtras {
       typeof item.steamAppId === "string" && /^[1-9]\d*$/.test(item.steamAppId)
         ? item.steamAppId
         : null,
+    touchgalId:
+      typeof item.touchgalId === "string" &&
+      /^[a-z\d]{8}$/i.test(item.touchgalId)
+        ? item.touchgalId
+        : null,
+    touchgalUrl:
+      typeof item.touchgalUrl === "string" &&
+      /^https:\/\/(?:[a-z\d-]+\.)*touchgal\.(?:ink|com)\//i.test(
+        item.touchgalUrl,
+      )
+        ? mediaUrl(item.touchgalUrl)
+        : null,
+    sourceTitle:
+      typeof item.sourceTitle === "string"
+        ? item.sourceTitle.trim().slice(0, 500) || null
+        : null,
+    communityRating:
+      typeof item.communityRating === "number" &&
+      Number.isFinite(item.communityRating) &&
+      item.communityRating >= 0 &&
+      item.communityRating <= 10
+        ? item.communityRating
+        : null,
+    communityRatingCount:
+      typeof item.communityRatingCount === "number" &&
+      Number.isSafeInteger(item.communityRatingCount) &&
+      item.communityRatingCount >= 0
+        ? item.communityRatingCount
+        : 0,
   };
 }
 

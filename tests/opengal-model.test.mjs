@@ -93,6 +93,11 @@ test("metadata URLs reject active content and unsupported file/Steam schemes", (
       visitedAt: null,
       source: "local",
       steamAppId: null,
+      touchgalId: null,
+      touchgalUrl: null,
+      sourceTitle: null,
+      communityRating: null,
+      communityRatingCount: 0,
     },
   );
 });

@@ -12,7 +12,6 @@ import {
   ArrowUpRightIcon,
   CaretDownIcon,
   CheckIcon,
-  CloudSlashIcon,
   FolderOpenIcon,
   GithubLogoIcon,
   ImageSquareIcon,
@@ -231,75 +230,6 @@ export function AppearanceDialog({
   );
 }
 
-export function SourceDialog({
-  endpoint,
-  close,
-  save,
-}: {
-  endpoint: string;
-  close: () => void;
-  save: (url: string) => Promise<void>;
-}) {
-  const [value, setValue] = useState(endpoint);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  return (
-    <Modal title="让故事，变得完整" subtitle="TouchGal 数据源" close={close}>
-      <div className="gg-source-status">
-        <CloudSlashIcon size={28} />
-        <div>
-          <strong>等待 API 接入</strong>
-          <p>封面、简介与宣传影片暂时留空。</p>
-        </div>
-        <span>未连接</span>
-      </div>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          const url = value.trim();
-          try {
-            if (url && !["http:", "https:"].includes(new URL(url).protocol))
-              throw new Error();
-          } catch {
-            setError("请填写有效的 HTTP 或 HTTPS 接口地址。");
-            return;
-          }
-          setBusy(true);
-          void save(url).catch(() => {
-            setError("地址未能保存，请重试。");
-            setBusy(false);
-          });
-        }}
-      >
-        <label className="gg-field">
-          API 地址
-          <input
-            type="url"
-            placeholder="https://…"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        </label>
-        <p className="gg-field-note">
-          正式接口提供后，将按游戏名称自动查询并补全资料。当前仅保存地址，不发送请求，也不保存账号密码。
-        </p>
-        {error && (
-          <p className="gg-form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="gg-dialog-footer">
-          <span className="gg-field-note">游戏库始终保存在本机</span>
-          <button className="gg-button gg-primary" disabled={busy}>
-            保存地址
-            <CheckIcon size={16} />
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
 export function AboutDialog({ close }: { close: () => void }) {
   return (
     <Modal
@@ -308,7 +238,12 @@ export function AboutDialog({ close }: { close: () => void }) {
       close={close}
     >
       <div className="gg-about-mark">
-        <img src={BRAND.icon} alt="StarryGal 人物抱星图标" width={64} height={64} />
+        <img
+          src={BRAND.icon}
+          alt="StarryGal 人物抱星图标"
+          width={64}
+          height={64}
+        />
         <div>
           <strong>让喜欢的故事，有自己的位置。</strong>
           <p>Tauri 2 · Rust · React · TypeScript · SQLite</p>

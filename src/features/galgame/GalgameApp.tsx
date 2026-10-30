@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -65,7 +66,6 @@ import {
   REPOSITORY_URL,
   completionPatch,
   normalizedPath,
-  normalizeTags,
   noticeNeeded,
   visitPatch,
   type LibraryGame,
@@ -81,7 +81,19 @@ import {
   launchSteamGame,
   type DiscoveredGame,
 } from "./discovery";
-import { lookupGameByName, metadataConfigured } from "./metadata";
+import {
+  lookupGameByName,
+  registerMetadataProvider,
+  type GameMetadata,
+} from "./metadata";
+import {
+  createTouchGalClient,
+  DEFAULT_TOUCHGAL_ENDPOINT,
+  metadataPatch,
+  validateEndpoint,
+} from "./touchgal";
+import { touchgalTransport } from "./touchgal-transport";
+import { TouchGalSourceDialog } from "./TouchGalDialogs";
 import {
   AboutDialog,
   AddGameDialog,
@@ -89,7 +101,6 @@ import {
   Modal,
   NoticeDialog,
   ScanResultsDialog,
-  SourceDialog,
 } from "./StudioDialogs";
 import GamePage from "./GamePage";
 import "./galgame.css";
@@ -190,8 +201,17 @@ export default function GalgameApp() {
   const [candidates, setCandidates] = useState<DiscoveredGame[]>([]);
   const [removeId, setRemoveId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceUrl, setSourceUrl] = useState(DEFAULT_TOUCHGAL_ENDPOINT);
+  const [allowNsfw, setAllowNsfw] = useState(false);
+  const [sourceReady, setSourceReady] = useState(false);
+  const metadataClient = useMemo(
+    () => createTouchGalClient(sourceUrl, allowNsfw, touchgalTransport),
+    [sourceUrl, allowNsfw],
+  );
   const [metadataBusy, setMetadataBusy] = useState(false);
+  const [metadataMessage, setMetadataMessage] = useState("");
+  const [metadataBatch, setMetadataBatch] = useState(false);
+  const metadataBatchController = useRef<AbortController | null>(null);
   const folderPicker = useRef<HTMLInputElement>(null);
   const wallpaperPicker = useRef<HTMLInputElement>(null);
   const firstScanStarted = useRef(false);
@@ -302,9 +322,23 @@ export default function GalgameApp() {
       .catch(() => {
         if (active) setModal("notice");
       });
-    void readPreference("touchgal.endpoint").then((url) => {
-      if (active) setSourceUrl(url || "");
-    });
+    void Promise.all([
+      readPreference("touchgal.endpoint"),
+      readPreference("touchgal.allowNsfw"),
+    ])
+      .then(([url, allow]) => {
+        if (!active) return;
+        try {
+          setSourceUrl(validateEndpoint(url || DEFAULT_TOUCHGAL_ENDPOINT));
+        } catch {
+          setSourceUrl(DEFAULT_TOUCHGAL_ENDPOINT);
+        }
+        setAllowNsfw(allow === "true");
+        setSourceReady(true);
+      })
+      .catch(() => {
+        if (active) setSourceReady(true);
+      });
     return () => {
       active = false;
     };
@@ -362,7 +396,17 @@ export default function GalgameApp() {
       .catch(() => setToast("首次扫描设置未能读取，可点击“自动查找”重试。"));
   }, [noticeReady]);
   useEffect(() => {
-    if (!game || !metadataConfigured()) return;
+    registerMetadataProvider(sourceReady ? metadataClient.provider : null);
+    metadataKeys.current.clear();
+    metadataBatchController.current?.abort();
+    return () => {
+      registerMetadataProvider(null);
+      metadataBatchController.current?.abort();
+    };
+  }, [metadataClient, sourceReady]);
+  useEffect(() => {
+    setMetadataMessage("");
+    if (!game || !sourceReady || game.touchgalId) return;
     const target = game;
     const key = target.id + "|" + target.title;
     if (metadataKeys.current.has(key)) return;
@@ -374,41 +418,33 @@ export default function GalgameApp() {
       .then(async (result) => {
         if (controller.signal.aborted) return;
         if (!result) {
+          setMetadataMessage("未能自动确认条目，请点击“匹配资料”搜索并选择。");
           completed = true;
           return;
         }
-        // Metadata should fill gaps, not overwrite information the user has
-        // already entered (including a custom cover).
-        const patch = {
-          ...(!target.originalTitle?.trim() && result.originalTitle?.trim()
-            ? { originalTitle: result.originalTitle.trim() }
-            : {}),
-          ...(!target.coverPath?.trim() && result.coverUrl?.trim()
-            ? { coverPath: result.coverUrl.trim() }
-            : {}),
-          ...(!target.description?.trim() && result.description?.trim()
-            ? { description: result.description.trim() }
-            : {}),
-          ...(!target.developer?.trim() && result.developer?.trim()
-            ? { developer: result.developer.trim() }
-            : {}),
-          ...(!target.releaseDate?.trim() && result.releaseDate?.trim()
-            ? { releaseDate: result.releaseDate.trim() }
-            : {}),
-          ...(!target.videoUrl?.trim() && result.videoUrl?.trim()
-            ? { videoUrl: result.videoUrl.trim() }
-            : {}),
-          tags: normalizeTags([...target.tags, ...(result.tags || [])]),
-        };
-        const updated = await updateGame(target.id, patch);
+        const current = (await listGames()).find(
+          (item) => item.id === target.id,
+        );
+        if (
+          controller.signal.aborted ||
+          !current ||
+          current.title !== target.title
+        )
+          return;
+        const updated = await updateGame(
+          current.id,
+          metadataPatch(current, result),
+        );
         completed = true;
         metadataKeys.current.add(updated.id + "|" + updated.title);
         if (!controller.signal.aborted) replaceGame(updated);
       })
-      .catch(() => {
+      .catch((cause) => {
         if (!controller.signal.aborted) {
           metadataKeys.current.delete(key);
-          setToast("资料暂时未能补全，本地游戏记录已保留。");
+          setMetadataMessage(
+            cause instanceof Error ? cause.message : String(cause),
+          );
         }
       })
       .finally(() => {
@@ -419,7 +455,65 @@ export default function GalgameApp() {
       controller.abort();
       setMetadataBusy(false);
     };
-  }, [game?.id, game?.title]);
+  }, [game?.id, game?.title, metadataClient, sourceReady]);
+
+  async function applyMetadata(
+    id: number,
+    title: string,
+    result: GameMetadata,
+    replace = false,
+  ) {
+    const current = (await listGames()).find((item) => item.id === id);
+    if (!current || current.title !== title)
+      throw new Error("游戏名称已改变，请重新打开匹配窗口。");
+    replaceGame(await updateGame(id, metadataPatch(current, result, replace)));
+    setMetadataMessage("资料已保存。");
+  }
+  async function completeLibraryMetadata() {
+    if (metadataBatch) {
+      metadataBatchController.current?.abort();
+      return;
+    }
+    const controller = new AbortController();
+    metadataBatchController.current = controller;
+    setMetadataBatch(true);
+    let matched = 0;
+    let checked = 0;
+    try {
+      const pending = (await listGames()).filter((item) => !item.touchgalId);
+      for (const item of pending) {
+        if (controller.signal.aborted) break;
+        if ([...item.title.trim()].length < 3) {
+          checked++;
+          continue;
+        }
+        const result = await metadataClient.provider.searchByName(
+          item.title,
+          controller.signal,
+        );
+        if (controller.signal.aborted) break;
+        if (result) {
+          await applyMetadata(item.id, item.title, result);
+          matched++;
+        }
+        checked++;
+        setToast(
+          `正在补全资料 ${checked}/${pending.length} · 已匹配 ${matched} 部`,
+        );
+      }
+      setToast(
+        `${controller.signal.aborted ? "已停止补全" : "资料补全结束"}，已匹配 ${matched} 部；未匹配作品可进入详情手动选择。`,
+      );
+    } catch (cause) {
+      if (!controller.signal.aborted)
+        setToast(
+          (cause instanceof Error ? cause.message : String(cause)) +
+            ` 已保存 ${matched} 部。`,
+        );
+    } finally {
+      setMetadataBatch(false);
+    }
+  }
 
   async function acknowledgeNotice() {
     try {
@@ -959,7 +1053,16 @@ export default function GalgameApp() {
                 favorite={() => void toggleFavorite(game)}
                 complete={(value) => void setComplete(game, value)}
                 rename={async (title) => {
-                  replaceGame(await updateGame(game.id, { title }));
+                  replaceGame(
+                    await updateGame(game.id, {
+                      title,
+                      touchgalId: null,
+                      touchgalUrl: null,
+                      sourceTitle: null,
+                      communityRating: null,
+                      communityRatingCount: 0,
+                    }),
+                  );
                 }}
                 saveTags={async (tags) => {
                   replaceGame(await updateGame(game.id, { tags }));
@@ -975,6 +1078,14 @@ export default function GalgameApp() {
                 launch={() => void startGame(game)}
                 remove={() => setRemoveId(game.id)}
                 metadataBusy={metadataBusy}
+                metadataMessage={metadataMessage}
+                metadataClient={metadataClient}
+                applyMetadata={(result, replace) =>
+                  applyMetadata(game.id, game.title, result, replace)
+                }
+                saveVideo={async (videoUrl) => {
+                  replaceGame(await updateGame(game.id, { videoUrl }));
+                }}
               />
             ) : (
               <div className="gg-empty gg-glass">
@@ -1005,6 +1116,14 @@ export default function GalgameApp() {
                   <p>把散落在磁盘里的故事，慢慢收进日常。</p>
                 </div>
                 <div className="gg-heading-actions">
+                  <button
+                    className="gg-button gg-secondary"
+                    disabled={!sourceReady}
+                    onClick={() => void completeLibraryMetadata()}
+                  >
+                    <SparkleIcon size={18} />
+                    {metadataBatch ? "停止补全" : "补全资料"}
+                  </button>
                   <button
                     className="gg-button gg-secondary"
                     onClick={() => void automaticScan()}
@@ -1316,14 +1435,17 @@ export default function GalgameApp() {
         />
       )}
       {modal === "source" && (
-        <SourceDialog
+        <TouchGalSourceDialog
           endpoint={sourceUrl}
+          allowNsfw={allowNsfw}
           close={() => setModal(null)}
-          save={async (url) => {
+          save={async (url, allow) => {
             await writePreference("touchgal.endpoint", url);
+            await writePreference("touchgal.allowNsfw", String(allow));
             setSourceUrl(url);
+            setAllowNsfw(allow);
             setModal(null);
-            setToast("接口地址已保存，等待正式 API 适配。");
+            setToast("资料设置已保存，可在游戏库点击“补全资料”。");
           }}
         />
       )}

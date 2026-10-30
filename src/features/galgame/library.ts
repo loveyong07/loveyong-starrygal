@@ -378,6 +378,11 @@ export async function addGame(input: Input): Promise<LibraryGame> {
     visitedAt: _visit,
     source: _source,
     steamAppId: _steam,
+    touchgalId: _touchgalId,
+    touchgalUrl: _touchgalUrl,
+    sourceTitle: _sourceTitle,
+    communityRating: _communityRating,
+    communityRatingCount: _communityRatingCount,
     ...core
   } = input;
   if (desktop) {
@@ -431,6 +436,11 @@ export async function updateGame(
       visitedAt: _visit,
       source: _source,
       steamAppId: _steam,
+      touchgalId: _touchgalId,
+      touchgalUrl: _touchgalUrl,
+      sourceTitle: _sourceTitle,
+      communityRating: _communityRating,
+      communityRatingCount: _communityRatingCount,
       ...core
     } = patch;
     const game = await gameUpdate(id, {
