@@ -169,6 +169,7 @@ fn discover(
         let mut stack = vec![(root.to_owned(), 0)];
         while let Some((path, depth)) = stack.pop() {
             if cancel.load(Ordering::Relaxed) { report.cancelled = true; return report; }
+            if super::is_skipped_dir(&path) { continue; }
             if !scanned.insert(path_key(&path)) { continue; }
             visited += 1;
             if visited > MAX_DIRS || report.games.len() >= MAX_GAMES {
@@ -331,5 +332,25 @@ mod tests {
         assert_eq!(report.games.len(), 1); assert!(report.games[0].recognized);
         let stopped = discover(&[f.0.clone()], &[], &HashSet::new(), &AtomicBool::new(true), |_| {});
         assert!(stopped.cancelled); assert!(stopped.games.is_empty());
+    }
+
+    #[test]
+    fn engine_files_in_auxiliary_folders_do_not_become_games() {
+        let f = Fixture::new();
+        for folder in ["Novel", "Novel/补丁v1.2", "Novel/备份", "Novel/汉化", "PATCH_v1.2", "Game Backup", "Save", "工具/汉化文件"] {
+            f.file(&format!("{folder}/Game.exe"), "");
+            f.file(&format!("{folder}/data.xp3"), "");
+        }
+        f.file("ATRI 汉化版/Game.exe", "");
+        f.file("ATRI 汉化版/data.xp3", "");
+        let report = discover(&[f.0.clone()], &[], &HashSet::new(), &AtomicBool::new(false), |_| {});
+        let titles: HashSet<_> = report.games.iter().map(|game| game.title.as_str()).collect();
+        assert_eq!(report.games.len(), 2);
+        assert!(titles.contains("Novel"));
+        assert!(report.games.iter().any(|game| game.install_path.ends_with("ATRI 汉化版")));
+        let folder_scan = super::super::scan_directory_impl(&f.0.to_string_lossy(), 8, &HashSet::new());
+        assert_eq!(folder_scan.len(), 2);
+        let direct_patch = discover(&[f.0.join("Novel/补丁v1.2")], &[], &HashSet::new(), &AtomicBool::new(false), |_| {});
+        assert!(direct_patch.games.is_empty());
     }
 }

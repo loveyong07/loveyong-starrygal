@@ -15,6 +15,7 @@ import {
   FolderOpenIcon,
   GithubLogoIcon,
   ImageSquareIcon,
+  MagnifyingGlassIcon,
   PaletteIcon,
   PlusIcon,
   XIcon,
@@ -28,8 +29,9 @@ import {
   titleFromPath,
   type Appearance,
 } from "./library";
-import { NOTICE_TEXT, type LibraryGame } from "./model";
+import { NOTICE_TEXT, NOTICE_UPDATES, extras, type LibraryGame } from "./model";
 import type { DiscoveredGame } from "./discovery";
+import type { GameMetadata } from "./metadata";
 
 export function Modal({
   title,
@@ -104,6 +106,14 @@ export function NoticeDialog({ close }: { close: () => void }) {
       </div>
       <p className="gg-notice-title">让喜欢的故事，自由相遇。</p>
       <p className="gg-notice-text">{NOTICE_TEXT}</p>
+      <section className="gg-notice-updates">
+        <h3>本次更新 · v{BRAND.version}</h3>
+        <ul>
+          {NOTICE_UPDATES.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
       <div className="gg-notice-license">
         <CheckIcon size={16} />
         GPL-3.0-only · 完全开源 · 免费使用
@@ -292,15 +302,25 @@ export function AboutDialog({ close }: { close: () => void }) {
 export function AddGameDialog({
   close,
   done,
+  renderSearch,
 }: {
   close: () => void;
   done: (game: LibraryGame) => Promise<void>;
+  renderSearch?: (props: {
+    query: string;
+    select: (metadata: GameMetadata) => void;
+    close: () => void;
+  }) => ReactNode;
 }) {
   const [title, setTitle] = useState("");
   const [path, setPath] = useState("");
   const [args, setArgs] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [selectedMetadata, setSelectedMetadata] = useState<GameMetadata | null>(
+    null,
+  );
   const picker = useRef<HTMLInputElement>(null);
   function acceptFile(name: string) {
     if (!/\.exe$/i.test(name)) {
@@ -358,6 +378,16 @@ export function AddGameDialog({
       }
       await done(
         await addGame({
+          ...(selectedMetadata
+            ? {
+                ...extras(selectedMetadata),
+                originalTitle: selectedMetadata.originalTitle || null,
+                coverPath: selectedMetadata.coverUrl || null,
+                description: selectedMetadata.description || null,
+                developer: selectedMetadata.developer || null,
+                releaseDate: selectedMetadata.releaseDate || null,
+              }
+            : {}),
           title: title.trim(),
           installPath: folderFromPath(path.trim()),
           exePath: path.trim(),
@@ -370,10 +400,23 @@ export function AddGameDialog({
       setSaving(false);
     }
   }
+  if (searching && renderSearch) {
+    return renderSearch({
+      query: title,
+      select: (metadata) => {
+        if (!metadata.title?.trim())
+          throw new Error("条目缺少游戏名称，请重新选择。");
+        setTitle(metadata.title.trim());
+        setSelectedMetadata(metadata);
+        setError("");
+      },
+      close: () => setSearching(false),
+    });
+  }
   return (
     <Modal
       title="收藏一段新故事"
-      subtitle="请填写正确作品名，便于后续自动匹配资料。"
+      subtitle="可先用部分名称搜索作品，确认后再添加本地游戏。"
       close={close}
     >
       <form onSubmit={(event) => void submit(event)}>
@@ -403,17 +446,44 @@ export function AddGameDialog({
             if (file) acceptFile(file.name);
           }}
         />
-        <label className="gg-field">
-          游戏名称
-          <input
-            autoComplete="off"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="请填写完整、正确的游戏名称"
-            required
-            maxLength={250}
-          />
-        </label>
+        <div className="gg-game-name-field">
+          <label className="gg-field">
+            游戏名称
+            <input
+              autoComplete="off"
+              value={title}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                setSelectedMetadata(null);
+              }}
+              placeholder="完整名称或部分关键词，搜索至少 3 个字符"
+              required
+              maxLength={250}
+            />
+          </label>
+          <button
+            type="button"
+            className="gg-button gg-secondary"
+            disabled={
+              saving ||
+              !renderSearch ||
+              [...title.trim()].length < 3 ||
+              [...title.trim()].length > 100
+            }
+            onClick={() => setSearching(true)}
+          >
+            <MagnifyingGlassIcon size={17} />
+            搜索作品
+          </button>
+        </div>
+        <p
+          className="gg-field-note"
+          role={selectedMetadata ? "status" : undefined}
+        >
+          {selectedMetadata
+            ? `已选择“${selectedMetadata.title}”，添加时会一并保存资料。`
+            : "输入至少 3 个字符的名称片段、外文词语或别名，搜索并选择正确作品。"}
+        </p>
         <label className="gg-field">
           启动路径
           <input
@@ -489,7 +559,7 @@ export function ScanResultsDialog({
     <Modal
       wide
       title="发现这些本地故事"
-      subtitle="可修改名称后导入；未能确定为 Galgame 的 Steam 游戏需要你勾选确认。"
+      subtitle="核对名称和目录后再导入；可取消不需要的条目。扫描不会直接修改游戏库。"
       close={close}
     >
       <div className="gg-scan-summary">

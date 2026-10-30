@@ -434,6 +434,62 @@
   align-items: center;
   gap: 15px;
 }
+.gg-topbar[data-tauri-drag-region] {
+  user-select: none;
+}
+.gg-breadcrumb {
+  min-width: 0;
+}
+.gg-breadcrumb strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gg-topbar-actions {
+  flex-shrink: 0;
+}
+.gg-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.gg-window-controls button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #61758d;
+  cursor: pointer;
+}
+.gg-window-controls button:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+.gg-window-controls .gg-window-close:hover {
+  background: #c84f66;
+  color: white;
+}
+.gg-notice-updates {
+  margin-top: 18px;
+  padding: 15px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.38);
+  color: #526b87;
+  text-align: left;
+  font-size: 12px;
+}
+.gg-notice-updates h3 {
+  font-size: 13px;
+}
+.gg-notice-updates ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.gg-notice-updates li + li {
+  margin-top: 5px;
+}
 .gg-update-badge {
   display: inline-flex;
   align-items: center;
@@ -1433,6 +1489,23 @@
   font-size: 9px;
   line-height: 1.9;
   margin-top: 14px !important;
+}
+.gg-game-name-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.gg-game-name-field .gg-field {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.gg-game-name-field > button {
+  flex-shrink: 0;
+}
+.gg-game-name-field + .gg-field-note {
+  margin-bottom: 16px;
 }
 .gg-dialog-footer > .gg-field-note {
   max-width: 45%;

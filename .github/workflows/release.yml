@@ -51,6 +51,12 @@ jobs:
           if ($process.HasExited) { throw "Installed application exited at startup: $($process.ExitCode)" }
           Stop-Process -Id $process.Id
           Write-Output 'Custom-directory installation and application startup passed.'
+      - name: Verify in-place upgrade preserves user data
+        shell: pwsh
+        run: |
+          $installer = @(Get-ChildItem -LiteralPath src-tauri/target/release/bundle/nsis -Filter '*-setup.exe')
+          if ($installer.Count -ne 1) { throw 'Expected one installer' }
+          ./scripts/verify-windows-upgrade.ps1 -InstallerPath $installer[0].FullName -InstallDirectory (Join-Path $env:RUNNER_TEMP 'StarryGal custom install')
       - name: Stage downloads and checksums
         id: downloads
         shell: pwsh

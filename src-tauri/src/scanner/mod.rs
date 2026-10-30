@@ -60,7 +60,49 @@ const SKIPPED_DIR_NAMES: &[&str] = &[
     "tmp",
     "cache",
     "logs",
+    "renpy",
+    "redist",
+    "_redist",
+    "_commonredist",
+    "support",
+    "tools",
+    "manual",
+    "manuals",
+    "screenshots",
+    "wallpapers",
+    "工具",
+    "截图",
+    "壁纸",
 ];
+
+/// Auxiliary folders often contain a copy of Game.exe and engine archives.
+/// Those files are not sufficient evidence for importing a second game.
+fn is_auxiliary_dir_name(name: &str) -> bool {
+    let name = name.to_lowercase();
+    if ["补丁", "補丁", "备份", "備份"].iter().any(|word| name.contains(*word)) {
+        return true;
+    }
+    let label = name.trim_matches(|ch: char| !ch.is_alphanumeric());
+    if ["汉化", "漢化", "汉化包", "漢化包", "汉化文件", "漢化文件", "汉化工具", "漢化工具",
+        "汉化相关", "漢化相關", "存档", "存檔", "攻略", "修改器", "解包工具"]
+        .iter().any(|marker| label == *marker || label.strip_prefix(*marker).is_some_and(|suffix| {
+            suffix.chars().any(|ch| ch.is_ascii_digit()) &&
+                suffix.chars().all(|ch| ch.is_ascii_digit() || "v._- ()[]".contains(ch))
+        })) {
+        return true;
+    }
+    name.split(|ch: char| !ch.is_alphanumeric()).any(|word| {
+        [
+            "patch", "patches", "backup", "backups", "bak", "crack", "cracks",
+            "save", "saves", "savedata", "walkthrough",
+        ].iter().any(|marker| {
+            word == *marker || word.strip_prefix(*marker).is_some_and(|suffix| {
+                let suffix = suffix.strip_prefix('v').unwrap_or(suffix);
+                !suffix.is_empty() && suffix.chars().all(|ch| ch.is_ascii_digit())
+            })
+        })
+    })
+}
 
 /// Executable name fragments that mark a file as *not* the game.
 ///
@@ -88,6 +130,13 @@ const EXE_BLOCKLIST: &[&str] = &[
     "update",
     "updater",
     "patch",
+    "backup",
+    "crack",
+    "补丁",
+    "補丁",
+    "备份",
+    "備份",
+    "python",
     "register",
     "readme",
     "help",
@@ -340,6 +389,7 @@ pub fn scan_directory_impl(
     let mut stack: Vec<(PathBuf, u32)> = vec![(root, 1)];
 
     while let Some((dir, depth)) = stack.pop() {
+        if is_skipped_dir(&dir) { continue; }
         let entries = match std::fs::read_dir(&dir) {
             Ok(entries) => entries,
             // Unreadable folder (permissions, races): skip it, keep scanning.
@@ -687,12 +737,12 @@ fn is_cover_name(path: &Path) -> bool {
         .is_some_and(|e| IMAGE_EXTENSIONS.iter().any(|ext| e.eq_ignore_ascii_case(ext)))
 }
 
-/// True when any path component is on the skip list.
+/// True when the directory name denotes generated files or auxiliary content.
 fn is_skipped_dir(path: &Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())
         .map(|n| n.to_lowercase())
-        .is_some_and(|n| SKIPPED_DIR_NAMES.contains(&n.as_str()))
+        .is_some_and(|n| SKIPPED_DIR_NAMES.contains(&n.as_str()) || is_auxiliary_dir_name(&n))
 }
 
 /// Reject Windows junctions / reparse points, which `is_dir()` alone accepts.
@@ -745,10 +795,23 @@ mod tests {
         assert_eq!(exe_rank("unins000.exe"), None);
         assert_eq!(exe_rank("vcredist_x64.exe"), None);
         assert_eq!(exe_rank("config.exe"), None);
+        assert_eq!(exe_rank("汉化补丁.exe"), None);
+        assert_eq!(exe_rank("backup.exe"), None);
         assert_eq!(exe_rank("game.exe"), Some(0));
         assert_eq!(exe_rank("GAME.EXE"), Some(0));
         assert_eq!(exe_rank("Sabbat_of_the_Witch_cn.exe"), Some(1));
         assert_eq!(exe_rank("月姫.exe"), Some(2));
+    }
+
+    #[test]
+    fn auxiliary_folders_are_skipped_without_rejecting_complete_translated_games() {
+        for name in ["补丁", "ATRI汉化补丁v1.2", "备份2026", "Backup", "PATCH_v1.2",
+            "Game_backup", "patches", "汉化", "【汉化文件】", "汉化_1.0", "存档", "_CommonRedist"] {
+            assert!(is_skipped_dir(Path::new(name)), "{name}");
+        }
+        for name in ["【汉化】常轨脱离Creative", "ATRI 汉化版", "月姬汉化硬盘版", "My Game", "Dispatch", "BackupStory"] {
+            assert!(!is_skipped_dir(Path::new(name)), "{name}");
+        }
     }
 
     #[test]
