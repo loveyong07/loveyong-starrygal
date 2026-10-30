@@ -49,8 +49,7 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 1. 由于API调用限制，可能无法一次性导入所有游戏资料，可以稍后重试（如果访问次数过多，也需要第二天>_<)
 2. 由于API密钥部署在vercel服务器上（经济能力有限），直连的用户也许加载缓慢，可以科学上网尝试>_<
 3. 由于第一次尝试做启动器，功能或者内容不完全，请谅解
-4. 由于API调用的限制，开放了token自定义，可以自行前往TouchGAL API获取token
-5. 反馈：https://loveyong07.top/contact (ฅ•.•ฅ)ﻌﻌﻌ♥️
+4. 反馈：https://loveyong07.top/contact (ฅ•.•ฅ)ﻌﻌﻌ♥️
 
 ## 使用
 
