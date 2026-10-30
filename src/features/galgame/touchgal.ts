@@ -1,5 +1,6 @@
 import { mediaUrl, normalizeTags, type LibraryGame } from "./model.ts";
 import type { GameMetadata, GameMetadataProvider } from "./metadata.ts";
+import { parseTouchGalIntroduction } from "./touchgal-introduction.ts";
 
 export const DEFAULT_TOUCHGAL_ENDPOINT = "https://loveyong07.top/api/starrygal";
 export type TouchGalAction =
@@ -100,17 +101,7 @@ export function parseTouchGalDetail(value: unknown): GameMetadata {
   const rating = object(data.rating);
   const average = rating.average;
   const count = rating.count;
-  const introduction = string(data.introduction)
-    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
-    .replace(/<\/?(?:p|div|br|li|h[1-6])\b[^>]*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  const introduction = parseTouchGalIntroduction(string(data.introduction));
   return {
     title: string(data.name),
     sourceTitle: string(data.name),
@@ -123,7 +114,8 @@ export function parseTouchGalDetail(value: unknown): GameMetadata {
       : null,
     touchgalUrl: touchgalLink(data.touchgalUrl),
     coverUrl: mediaUrl(data.bannerUrl),
-    description: introduction || null,
+    description: introduction.description,
+    screenshots: introduction.screenshots,
     developer: Array.isArray(data.companies)
       ? data.companies
           .map((company) => string(object(company).name))
@@ -143,8 +135,8 @@ export function parseTouchGalDetail(value: unknown): GameMetadata {
       typeof count === "number" && Number.isSafeInteger(count) && count >= 0
         ? count
         : 0,
-    // The published API has no PV field. A manually supplied video is preserved.
-    videoUrl: null,
+    // Some entries include a real media URL inside their public introduction.
+    videoUrl: introduction.videoUrl,
   };
 }
 
@@ -154,6 +146,12 @@ export function metadataPatch(
   replace = false,
 ) {
   return {
+    ...(!game.videoOverride && (replace || !game.videoUrl) && result.videoUrl
+      ? { videoUrl: result.videoUrl }
+      : {}),
+    ...((replace || !game.screenshots.length) && result.screenshots?.length
+      ? { screenshots: result.screenshots }
+      : {}),
     ...((replace || !game.originalTitle?.trim()) && result.originalTitle?.trim()
       ? { originalTitle: result.originalTitle.trim() }
       : {}),

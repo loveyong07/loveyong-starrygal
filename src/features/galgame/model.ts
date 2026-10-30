@@ -13,6 +13,8 @@ export const NOTICE_TEXT =
 export interface GameExtras {
   tags: string[];
   videoUrl: string | null;
+  videoOverride: boolean;
+  screenshots: string[];
   customCoverPath: string | null;
   visitedAt: string | null;
   source: "local" | "steam";
@@ -57,6 +59,22 @@ export function extras(value: unknown): GameExtras {
   return {
     tags: normalizeTags(item.tags),
     videoUrl: mediaUrl(item.videoUrl),
+    videoOverride: item.videoOverride === true,
+    screenshots: Array.isArray(item.screenshots)
+      ? [
+          ...new Set(
+            item.screenshots.flatMap((value) => {
+              const url = mediaUrl(value);
+              return url &&
+                new URL(url).protocol === "https:" &&
+                !new URL(url).username &&
+                !new URL(url).password
+                ? [url]
+                : [];
+            }),
+          ),
+        ].slice(0, 12)
+      : [],
     customCoverPath:
       typeof item.customCoverPath === "string" && item.customCoverPath.trim()
         ? item.customCoverPath.trim()
@@ -158,6 +176,17 @@ export const isGameExecutable = (path: string) =>
   !/(?:^|[\\/])(unins[^\\/]*|uninstall|setup|install|config|crash[^\\/]*|update[^\\/]*|vcredist[^\\/]*|dxsetup)\.exe$/i.test(
     path,
   );
+
+export function selectedExecutable(value: string): string {
+  const path = value.trim().replace(/^"([^"]+)"$/, "$1");
+  if (
+    !/^(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+[\\/])/i.test(path) ||
+    !/\.exe$/i.test(path) ||
+    /[\u0000\r\n]/.test(path)
+  )
+    throw new Error("请选择游戏启动 EXE 的完整路径。");
+  return path;
+}
 
 export function noticeNeeded(seen: unknown) {
   return seen !== NOTICE_VERSION;

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeftIcon,
   ArrowUpRightIcon,
@@ -6,18 +6,22 @@ import {
   CheckIcon,
   ClockCounterClockwiseIcon,
   HeartIcon,
+  FolderOpenIcon,
   ImageSquareIcon,
   PencilSimpleIcon,
   PlayIcon,
-  PlusIcon,
   TagIcon,
   TrashIcon,
-  XIcon,
 } from "@phosphor-icons/react";
 import { coverSrc } from "@/lib/asset";
 import { formatPlayTime } from "@/types/game";
 import { gameCoverImport } from "@/lib/db";
-import { mediaUrl, normalizeTags, statusOf, type LibraryGame } from "./model";
+import {
+  mediaUrl,
+  selectedExecutable,
+  statusOf,
+  type LibraryGame,
+} from "./model";
 import {
   ResourceLink,
   TouchGalMatchDialog,
@@ -25,8 +29,52 @@ import {
 } from "./TouchGalDialogs";
 import type { GameMetadata } from "./metadata";
 import type { TouchGalClient } from "./touchgal";
+import { parseTouchGalIntroduction } from "./touchgal-introduction";
 import { desktop, savePreviewCover } from "./library";
 import { Modal } from "./StudioDialogs";
+
+function LinkedParagraph({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  let from = 0;
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"'（）)]+/g)) {
+    const at = match.index!;
+    nodes.push(text.slice(from, at));
+    const url = mediaUrl(match[0]);
+    nodes.push(
+      url && !new URL(url).username && !new URL(url).password ? (
+        <ResourceLink key={at} href={url}>
+          {match[0]}
+        </ResourceLink>
+      ) : (
+        match[0]
+      ),
+    );
+    from = at + match[0].length;
+  }
+  nodes.push(text.slice(from));
+  return <>{nodes}</>;
+}
+
+function LinkedDescription({ text }: { text: string }) {
+  return (
+    <>
+      {text
+        .split(/\n{2,}/)
+        .filter(Boolean)
+        .map((block, index) =>
+          /^(游戏介绍|游戏简介|剧情简介|故事介绍|支持正版)$/.test(
+            block.trim(),
+          ) ? (
+            <h3 key={index}>{block.trim()}</h3>
+          ) : (
+            <p key={index}>
+              <LinkedParagraph text={block} />
+            </p>
+          ),
+        )}
+    </>
+  );
+}
 
 export default function GamePage({
   game,
@@ -34,8 +82,6 @@ export default function GamePage({
   favorite,
   complete,
   rename,
-  saveTags,
-  saveReview,
   saveCover,
   launch,
   remove,
@@ -44,14 +90,14 @@ export default function GamePage({
   metadataClient,
   applyMetadata,
   saveVideo,
+  saveExecutable,
+  restoreSteam,
 }: {
   game: LibraryGame;
   back: () => void;
   favorite: () => void;
   complete: (value: boolean) => void;
   rename: (title: string) => Promise<void>;
-  saveTags: (tags: string[]) => Promise<void>;
-  saveReview: (rating: number | null, notes: string | null) => Promise<void>;
   saveCover: (coverPath: string | null) => Promise<void>;
   launch: () => void;
   remove: () => void;
@@ -60,8 +106,19 @@ export default function GamePage({
   metadataClient: TouchGalClient;
   applyMetadata: (result: GameMetadata, replace: boolean) => Promise<void>;
   saveVideo: (value: string | null) => Promise<void>;
+  saveExecutable: (path: string) => Promise<void>;
+  restoreSteam: () => Promise<void>;
 }) {
-  const [tagDraft, setTagDraft] = useState("");
+  const introduction = useMemo(
+    () => parseTouchGalIntroduction(game.description),
+    [game.description],
+  );
+  const videoUrl = game.videoOverride
+    ? game.videoUrl
+    : game.videoUrl || introduction.videoUrl;
+  const screenshots = game.screenshots.length
+    ? game.screenshots
+    : introduction.screenshots;
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(game.title);
   const [error, setError] = useState("");
@@ -69,22 +126,25 @@ export default function GamePage({
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverError, setCoverError] = useState("");
   const [coverNotice, setCoverNotice] = useState("");
-  const [ratingDraft, setRatingDraft] = useState(
-    game.rating === null ? "" : String(game.rating),
-  );
-  const [reviewDraft, setReviewDraft] = useState(game.notes || "");
-  const [reviewBusy, setReviewBusy] = useState(false);
-  const [reviewNotice, setReviewNotice] = useState("");
   const [matching, setMatching] = useState(false);
-  const [videoDraft, setVideoDraft] = useState(game.videoUrl || "");
+  const [videoDraft, setVideoDraft] = useState(videoUrl || "");
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [choosingExecutable, setChoosingExecutable] = useState(false);
+  const [exeDraft, setExeDraft] = useState(game.exePath || "");
+  const [exeBusy, setExeBusy] = useState(false);
+  const [exeError, setExeError] = useState("");
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoNotice, setVideoNotice] = useState("");
   const [videoFailed, setVideoFailed] = useState(false);
-  const videoIsPage = game.videoUrl
+  const videoIsPage = videoUrl
     ? /(^|\.)(bilibili\.com|b23\.tv|youtube\.com|youtu\.be|vimeo\.com)$/.test(
-        new URL(game.videoUrl).hostname,
+        new URL(videoUrl).hostname,
       )
     : false;
+  useEffect(() => {
+    setVideoDraft(videoUrl || "");
+    setVideoFailed(false);
+  }, [videoUrl]);
   const coverInput = useRef<HTMLInputElement>(null);
   const src = coverSrc(game.customCoverPath || game.coverPath);
   const status = statusOf(game);
@@ -141,28 +201,6 @@ export default function GamePage({
     }
   }
 
-  async function saveReviewDraft() {
-    const parsedRating = ratingDraft.trim() ? Number(ratingDraft) : null;
-    if (
-      parsedRating !== null &&
-      (!Number.isFinite(parsedRating) || parsedRating < 0 || parsedRating > 10)
-    ) {
-      setReviewNotice("评分请填写 0 到 10 之间的数字。");
-      return;
-    }
-    setReviewBusy(true);
-    setReviewNotice("");
-    try {
-      await saveReview(parsedRating, reviewDraft.trim() || null);
-      setReviewDraft(reviewDraft.trim());
-      setReviewNotice("评价已保存。");
-    } catch {
-      setReviewNotice("评价未能保存，请重试。");
-    } finally {
-      setReviewBusy(false);
-    }
-  }
-
   async function restoreCover() {
     setCoverBusy(true);
     setCoverError("");
@@ -175,21 +213,6 @@ export default function GamePage({
       setCoverError("原封面未能恢复，请重试。");
     } finally {
       setCoverBusy(false);
-    }
-  }
-
-  async function addTag() {
-    const tags = normalizeTags([...game.tags, ...tagDraft.split(/[,，]/)]);
-    if (tags.join("\0") === game.tags.join("\0")) {
-      setTagDraft("");
-      return;
-    }
-    try {
-      await saveTags(tags);
-      setTagDraft("");
-      setError("");
-    } catch {
-      setError("标签未能保存，请重试。");
     }
   }
 
@@ -315,6 +338,17 @@ export default function GamePage({
               <ArrowUpRightIcon size={17} />
             </button>
             <button
+              className="gg-button gg-secondary"
+              onClick={() => {
+                setExeDraft(game.exePath || "");
+                setExeError("");
+                setChoosingExecutable(true);
+              }}
+            >
+              <FolderOpenIcon size={18} />
+              选择启动 EXE
+            </button>
+            <button
               className={
                 "gg-button gg-secondary " + (game.favorite ? "is-favorite" : "")
               }
@@ -342,6 +376,12 @@ export default function GamePage({
               {status === "completed" ? "已通关" : "标记为已通关"}
             </button>
           </div>
+          <p className="gg-launch-target" title={game.exePath || undefined}>
+            启动程序：
+            {game.source === "steam"
+              ? "由 Steam 启动"
+              : game.exePath?.split(/[\\/]/).pop() || "尚未选择 EXE"}
+          </p>
         </div>
       </section>
       <div className="gg-game-information">
@@ -377,12 +417,36 @@ export default function GamePage({
               )}
             </div>
           )}
-          {game.description ? (
-            <p className="gg-description">{game.description}</p>
+          {introduction.description ? (
+            <div className="gg-description">
+              <LinkedDescription text={introduction.description} />
+            </div>
           ) : (
             <div className="gg-story-blank">
               <p>故事简介，暂时留白。</p>
               <span>填写正确名称可自动查询，也可点击“匹配资料”选择条目。</span>
+            </div>
+          )}
+          {screenshots.length > 0 && (
+            <div className="gg-story-screenshots">
+              <h3>游戏截图</h3>
+              <div className="gg-screenshot-grid">
+                {screenshots.map((url, index) => (
+                  <button
+                    key={url}
+                    aria-label={`放大 ${game.title} 游戏截图 ${index + 1}`}
+                    onClick={() => setScreenshot(url)}
+                  >
+                    <img
+                      src={url}
+                      alt={`${game.title} 游戏截图 ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div className="gg-tags-section">
@@ -392,48 +456,9 @@ export default function GamePage({
             </h3>
             <div className="gg-tags">
               {game.tags.map((tag) => (
-                <span key={tag}>
-                  {tag}
-                  <button
-                    aria-label={"移除标签 " + tag}
-                    onClick={() =>
-                      void saveTags(
-                        game.tags.filter((item) => item !== tag),
-                      ).catch(() => setError("标签未能保存。"))
-                    }
-                  >
-                    <XIcon size={12} />
-                  </button>
-                </span>
+                <span key={tag}>{tag}</span>
               ))}
             </div>
-            <form
-              className="gg-tag-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void addTag();
-              }}
-            >
-              <input
-                aria-label="新增故事标签"
-                placeholder="添加标签，例如：恋爱、科幻"
-                value={tagDraft}
-                onChange={(event) => setTagDraft(event.target.value)}
-                maxLength={200}
-              />
-              <button
-                className="gg-button gg-secondary"
-                disabled={!tagDraft.trim()}
-              >
-                <PlusIcon size={16} />
-                添加
-              </button>
-            </form>
-            {error && (
-              <p className="gg-form-error" role="alert">
-                {error}
-              </p>
-            )}
           </div>
         </section>
         <section className="gg-film-panel gg-glass">
@@ -443,10 +468,10 @@ export default function GamePage({
               宣传影片<span>PV / OP</span>
             </h2>
           </header>
-          {game.videoUrl && !videoIsPage && !videoFailed ? (
+          {videoUrl && !videoIsPage && !videoFailed ? (
             <video
-              key={game.videoUrl}
-              src={game.videoUrl}
+              key={videoUrl}
+              src={videoUrl}
               controls
               preload="metadata"
               aria-label={game.title + "宣传影片"}
@@ -468,9 +493,9 @@ export default function GamePage({
               </small>
             </div>
           )}
-          {game.videoUrl && (
+          {videoUrl && (
             <div className="gg-source-credit">
-              <ResourceLink href={game.videoUrl}>在浏览器中播放</ResourceLink>
+              <ResourceLink href={videoUrl}>在浏览器中播放</ResourceLink>
             </div>
           )}
           <form
@@ -520,7 +545,8 @@ export default function GamePage({
             </p>
           )}
           <p className="gg-field-note">
-            TouchGal API 暂未提供 PV，可手动添加。
+            自动识别条目简介中的 PV /
+            OP，也可手动添加或修改。清空链接并保存可隐藏影片。
           </p>
           <div className="gg-source-credit">
             <ResourceLink
@@ -542,11 +568,16 @@ export default function GamePage({
           </button>
         </section>
       </div>
-      <TouchGalResources
-        key={game.touchgalId || "none"}
-        uniqueId={game.touchgalId}
-        client={metadataClient}
-      />
+      {screenshot && (
+        <Modal title="游戏截图" close={() => setScreenshot(null)} wide>
+          <img
+            className="gg-screenshot-full"
+            src={screenshot}
+            alt={game.title + "游戏截图"}
+          />
+        </Modal>
+      )}
+      <TouchGalResources url={game.touchgalUrl} />
       {matching && (
         <TouchGalMatchDialog
           title={game.title}
@@ -555,68 +586,121 @@ export default function GamePage({
           apply={applyMetadata}
         />
       )}
-      <section
-        className="gg-review-panel gg-glass"
-        aria-labelledby="gg-review-title"
-      >
-        <div className="gg-review-heading">
-          <div>
-            <span className="gg-section-kicker">YOUR IMPRESSION</span>
-            <h2 id="gg-review-title">我的评价</h2>
-          </div>
-          <span>只保存在你的游戏库中</span>
-        </div>
-        <div className="gg-review-grid">
-          <label className="gg-rating-field">
-            <span>
-              个人评分 <small>满分 10 分</small>
-            </span>
-            <div>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.01"
-                inputMode="decimal"
-                placeholder="未评分"
-                value={ratingDraft}
-                onChange={(event) => {
-                  setRatingDraft(event.target.value);
-                  setReviewNotice("");
-                }}
-                aria-label="个人评分，0 到 10 分"
-              />
-              <strong>/ 10</strong>
-            </div>
-          </label>
-          <label className="gg-review-notes">
-            <span>留下几句感想</span>
-            <textarea
-              value={reviewDraft}
-              onChange={(event) => {
-                setReviewDraft(event.target.value);
-                setReviewNotice("");
-              }}
-              maxLength={4000}
-              placeholder="喜欢的角色、难忘的片段，或通关后的心情……"
-              aria-label="游戏个人评价"
-            />
-            <small>{reviewDraft.length} / 4000</small>
-          </label>
-        </div>
-        <div className="gg-review-footer">
-          <span role="status">{reviewNotice}</span>
-          <button
-            className="gg-button gg-primary"
-            type="button"
-            onClick={() => void saveReviewDraft()}
-            disabled={reviewBusy}
+      {choosingExecutable && (
+        <Modal
+          title="选择启动程序"
+          subtitle="多个 EXE 时，选择你实际使用的游戏主程序。"
+          close={() => {
+            if (!exeBusy) setChoosingExecutable(false);
+          }}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setExeError("");
+              let path: string;
+              try {
+                path = selectedExecutable(exeDraft);
+              } catch (cause) {
+                setExeError((cause as Error).message);
+                return;
+              }
+              setExeBusy(true);
+              void saveExecutable(path)
+                .then(() => setChoosingExecutable(false))
+                .catch((cause) =>
+                  setExeError(
+                    cause instanceof Error ? cause.message : String(cause),
+                  ),
+                )
+                .finally(() => setExeBusy(false));
+            }}
           >
-            {reviewBusy ? "保存中…" : "保存评价"}
-            <CheckIcon size={16} />
-          </button>
-        </div>
-      </section>
+            <label className="gg-field">
+              启动 EXE
+              <input
+                value={exeDraft}
+                placeholder="D:\Games\作品名称\Game.exe"
+                required
+                onChange={(event) => setExeDraft(event.target.value)}
+              />
+            </label>
+            {desktop && (
+              <button
+                type="button"
+                className="gg-button gg-secondary"
+                disabled={exeBusy}
+                onClick={() => {
+                  setExeError("");
+                  void import("@tauri-apps/plugin-dialog")
+                    .then(({ open }) =>
+                      open({
+                        title: "选择游戏启动 EXE",
+                        defaultPath: game.installPath,
+                        multiple: false,
+                        filters: [
+                          { name: "Windows 启动程序", extensions: ["exe"] },
+                        ],
+                      }),
+                    )
+                    .then((path) => {
+                      if (typeof path === "string") setExeDraft(path);
+                    })
+                    .catch((cause) =>
+                      setExeError(
+                        cause instanceof Error ? cause.message : String(cause),
+                      ),
+                    );
+                }}
+              >
+                <FolderOpenIcon size={17} />
+                浏览 EXE
+              </button>
+            )}
+            <p className="gg-field-note">
+              保存后将直接运行所选 EXE。
+              {!desktop &&
+                "网页预览只保存路径；本地文件选择与程序启动需要桌面版。"}
+            </p>
+            {exeError && (
+              <p className="gg-form-error" role="alert">
+                {exeError}
+              </p>
+            )}
+            <div className="gg-dialog-footer">
+              {game.steamAppId && game.source !== "steam" ? (
+                <button
+                  type="button"
+                  disabled={exeBusy}
+                  className="gg-button gg-secondary"
+                  onClick={() => {
+                    setExeBusy(true);
+                    void restoreSteam()
+                      .then(() => setChoosingExecutable(false))
+                      .catch((cause) => setExeError(String(cause)))
+                      .finally(() => setExeBusy(false));
+                  }}
+                >
+                  恢复 Steam 启动
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={exeBusy}
+                  className="gg-button gg-secondary"
+                  onClick={() => setChoosingExecutable(false)}
+                >
+                  取消
+                </button>
+              )}
+              <button disabled={exeBusy} className="gg-button gg-primary">
+                保存启动程序
+                <CheckIcon size={16} />
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
       {editing && (
         <Modal
           title="修改游戏名称"

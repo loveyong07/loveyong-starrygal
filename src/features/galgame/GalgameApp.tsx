@@ -1064,12 +1064,6 @@ export default function GalgameApp() {
                     }),
                   );
                 }}
-                saveTags={async (tags) => {
-                  replaceGame(await updateGame(game.id, { tags }));
-                }}
-                saveReview={async (rating, notes) => {
-                  replaceGame(await updateGame(game.id, { rating, notes }));
-                }}
                 saveCover={async (customCoverPath) => {
                   replaceGame(await updateGame(game.id, { customCoverPath }));
                   if (!desktop && customCoverPath === null)
@@ -1084,7 +1078,28 @@ export default function GalgameApp() {
                   applyMetadata(game.id, game.title, result, replace)
                 }
                 saveVideo={async (videoUrl) => {
-                  replaceGame(await updateGame(game.id, { videoUrl }));
+                  replaceGame(
+                    await updateGame(game.id, {
+                      videoUrl,
+                      videoOverride: true,
+                    }),
+                  );
+                }}
+                saveExecutable={async (path) => {
+                  if (desktop) {
+                    const { invoke } = await import("@tauri-apps/api/core");
+                    await invoke("game_executable_validate", { exePath: path });
+                  }
+                  replaceGame(
+                    await updateGame(game.id, {
+                      exePath: path,
+                      source: "local",
+                    }),
+                  );
+                  setToast("启动 EXE 已保存。");
+                }}
+                restoreSteam={async () => {
+                  replaceGame(await updateGame(game.id, { source: "steam" }));
                 }}
               />
             ) : (

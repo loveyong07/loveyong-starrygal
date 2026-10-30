@@ -15,6 +15,7 @@ import {
   PROJECT_NAME,
   REPOSITORY_URL,
   installFolder,
+  selectedExecutable,
 } from "../src/features/galgame/model.ts";
 
 const base = {
@@ -89,6 +90,8 @@ test("metadata URLs reject active content and unsupported file/Steam schemes", (
     {
       tags: [],
       videoUrl: null,
+      videoOverride: false,
+      screenshots: [],
       customCoverPath: null,
       visitedAt: null,
       source: "local",
@@ -112,6 +115,25 @@ test("Windows path deduplication handles case, separators and trailing slashes",
   assert.equal(isGameExecutable("D:\\Games\\ATRI\\Game.exe"), true);
   for (const file of ["unins000.exe", "setup.exe", "config.exe", "readme.txt"])
     assert.equal(isGameExecutable(file), false);
+});
+
+test("explicit EXE selection supports Windows spaces, Unicode and UNC without treating arguments as a path", () => {
+  assert.equal(
+    selectedExecutable(' "D:\\Games\\夏日 口袋\\Game.exe" '),
+    "D:\\Games\\夏日 口袋\\Game.exe",
+  );
+  assert.equal(
+    selectedExecutable("\\\\server\\games\\Game.exe"),
+    "\\\\server\\games\\Game.exe",
+  );
+  for (const value of [
+    "Game.exe",
+    "https://example.com/Game.exe",
+    "D:\\Games\\readme.txt",
+    "D:\\Games\\Game.exe --fullscreen",
+    "D:\\Games\\bad\nGame.exe",
+  ])
+    assert.throws(() => selectedExecutable(value));
 });
 
 test("notice is first-run only and links use the final project identity", () => {

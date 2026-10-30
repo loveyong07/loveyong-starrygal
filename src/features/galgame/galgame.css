@@ -2856,3 +2856,90 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+.gg-screenshots-panel {
+  margin: 22px 0;
+  padding: 28px 32px;
+  border-radius: 22px;
+}
+.gg-screenshots-panel h2 {
+  margin: 7px 0 20px;
+  font-size: 21px;
+}
+.gg-story-screenshots {
+  margin: 26px 0;
+}
+.gg-story-screenshots h3 {
+  font-size: 14px;
+  margin: 0 0 14px;
+}
+.gg-description a {
+  color: var(--gg-primary-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.gg-description a svg {
+  display: inline;
+  vertical-align: middle;
+  margin-left: 3px;
+}
+.gg-screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.gg-screenshot-grid button {
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: zoom-in;
+}
+.gg-screenshot-grid img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  display: block;
+}
+.gg-screenshot-full {
+  display: block;
+  max-width: 100%;
+  max-height: 65vh;
+  width: auto;
+  margin: auto;
+  border-radius: 10px;
+}
+.gg-resource-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.gg-description h3 {
+  font-size: 20px;
+  line-height: 1.5;
+  font-weight: 700;
+  margin: 24px 0 16px;
+  color: var(--gg-ink);
+}
+.gg-description h3:first-child {
+  margin-top: 0;
+}
+.gg-description p {
+  margin: 0 0 18px;
+  white-space: pre-line;
+}
+.gg-notice-symbol img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.gg-launch-target {
+  margin: 14px 0 0;
+  font-size: 11px;
+  color: var(--gg-muted);
+  overflow-wrap: anywhere;
+}
+.gg-hero-actions {
+  flex-wrap: wrap;
+}

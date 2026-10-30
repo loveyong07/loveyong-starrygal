@@ -374,6 +374,8 @@ export async function addGame(input: Input): Promise<LibraryGame> {
   const {
     tags: _tags,
     videoUrl: _video,
+    videoOverride: _videoOverride,
+    screenshots: _screenshots,
     customCoverPath: _customCover,
     visitedAt: _visit,
     source: _source,
@@ -432,6 +434,8 @@ export async function updateGame(
     const {
       tags,
       videoUrl: _video,
+      videoOverride: _videoOverride,
+      screenshots: _screenshots,
       customCoverPath: _customCover,
       visitedAt: _visit,
       source: _source,

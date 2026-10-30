@@ -15,7 +15,6 @@ import {
   FolderOpenIcon,
   GithubLogoIcon,
   ImageSquareIcon,
-  MegaphoneIcon,
   PaletteIcon,
   PlusIcon,
   XIcon,
@@ -101,7 +100,7 @@ export function NoticeDialog({ close }: { close: () => void }) {
       close={close}
     >
       <div className="gg-notice-symbol">
-        <MegaphoneIcon size={34} weight="duotone" />
+        <img src={BRAND.icon} alt="StarryGal" />
       </div>
       <p className="gg-notice-title">让喜欢的故事，自由相遇。</p>
       <p className="gg-notice-text">{NOTICE_TEXT}</p>

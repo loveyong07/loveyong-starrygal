@@ -12,7 +12,6 @@ import {
   validateEndpoint,
   type TouchGalCandidate,
   type TouchGalClient,
-  type TouchGalResource,
 } from "./touchgal";
 import { touchgalTransport } from "./touchgal-transport";
 import type { GameMetadata } from "./metadata";
@@ -86,7 +85,7 @@ export function TouchGalSourceDialog({
   return (
     <Modal title="让故事，变得完整" subtitle="TouchGal 数据源" close={close}>
       <p className="gg-field-note">
-        按游戏名称补全封面、简介、会社、发售日、标签与社区评分。密钥由资料服务保管，用户无需填写。
+        按游戏名称补全封面、简介、截图、PV、会社、发售日、标签与社区评分。密钥由资料服务保管，用户无需填写。
       </p>
       <form
         onSubmit={(event) => {
@@ -258,7 +257,7 @@ export function TouchGalMatchDialog({
             替换已有的简介、会社、发售日与接口封面
           </label>
           <p className="gg-field-note">
-            默认只补全空白资料。始终保留自定义封面、标签、PV、个人评分与评价。
+            默认只补全空白资料。自定义封面与手动设置的 PV 会保留。
           </p>
           <div className="gg-dialog-footer">
             <button
@@ -330,93 +329,36 @@ export function TouchGalMatchDialog({
   );
 }
 
-export function TouchGalResources({
-  uniqueId,
-  client,
-}: {
-  uniqueId: string | null;
-  client: TouchGalClient;
-}) {
-  const [kind, setKind] = useState<"resources" | "patches" | null>(null);
-  const [items, setItems] = useState<TouchGalResource[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const controller = useRef<AbortController | null>(null);
-  useEffect(() => () => controller.current?.abort(), [uniqueId, client]);
-  async function load(next: "resources" | "patches") {
-    if (!uniqueId) return;
-    controller.current?.abort();
-    const active = new AbortController();
-    controller.current = active;
-    setKind(next);
-    setBusy(true);
-    setItems([]);
-    setError("");
-    try {
-      const result = await client.resources(uniqueId, next, active.signal);
-      if (!active.signal.aborted) setItems(result);
-    } catch (cause) {
-      if (!active.signal.aborted)
-        setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      if (!active.signal.aborted) setBusy(false);
-    }
-  }
+export function TouchGalResources({ url }: { url: string | null }) {
+  const destination = (section: "galgame" | "patch") => {
+    const target = new URL(url!);
+    target.searchParams.set("tab", "resources");
+    target.searchParams.set("resourceSection", section);
+    return target.href;
+  };
   return (
     <section className="gg-resources-panel gg-glass">
       <header>
         <div>
           <span className="gg-section-kicker">TOUCHGAL</span>
-          <h2>资源与补丁</h2>
+          <h2>前往 TouchGal</h2>
         </div>
       </header>
-      {uniqueId ? (
-        <>
-          <div className="gg-resource-tabs">
-            <button
-              className="gg-button gg-secondary"
-              disabled={busy}
-              onClick={() => void load("resources")}
-            >
-              查找游戏资源
-            </button>
-            <button
-              className="gg-button gg-secondary"
-              disabled={busy}
-              onClick={() => void load("patches")}
-            >
-              查找补丁
-            </button>
-          </div>
-          {busy && <p role="status">正在读取资源…</p>}
-          {error && (
-            <p className="gg-form-error" role="alert">
-              {error}
-            </p>
-          )}
-          {kind && !busy && !error && items.length === 0 && (
-            <p className="gg-field-note">
-              此条目暂无公开{kind === "patches" ? "补丁" : "游戏资源"}。
-            </p>
-          )}
-          <div className="gg-resource-list">
-            {items.map((item, i) => (
-              <article key={item.deepLink + i}>
-                <ResourceLink href={item.deepLink}>{item.name}</ResourceLink>
-                <p>{item.sizes.join(" · ")}</p>
-                <p>{item.description}</p>
-              </article>
-            ))}
-          </div>
-        </>
+      {url ? (
+        <div className="gg-resource-tabs">
+          <ResourceLink href={destination("galgame")}>
+            前往 TouchGal 游戏资源
+          </ResourceLink>
+          <ResourceLink href={destination("patch")}>
+            前往 TouchGal 补丁
+          </ResourceLink>
+        </div>
       ) : (
         <p className="gg-field-note">
-          先点击“匹配资料”关联正确条目，即可查看资源和补丁。
+          先点击“匹配资料”关联正确条目，即可直达对应下载页面。
         </p>
       )}
-      <p className="gg-field-note">
-        资源入口由 TouchGal 提供，点击后在浏览器中查看详情与下载方式。
-      </p>
+      <p className="gg-field-note">在浏览器中打开当前作品的对应页面。</p>
     </section>
   );
 }

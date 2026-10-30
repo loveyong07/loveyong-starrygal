@@ -9,6 +9,38 @@ use super::model::{Game, GameDetail, GameInput, GamePatch};
 use super::util::*;
 use super::DB_URL;
 
+/// Validate a user-selected executable without running it.
+#[tauri::command]
+pub async fn game_executable_validate(exe_path: String) -> CmdResult<()> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = std::path::Path::new(exe_path.trim());
+        if !path.is_absolute() || !path.extension().and_then(std::ffi::OsStr::to_str).is_some_and(|ext| ext.eq_ignore_ascii_case("exe")) {
+            return Err(CmdError("请选择游戏启动 EXE 的完整路径。".into()));
+        }
+        if !path.is_file() { return Err(CmdError("所选 EXE 不存在或无法访问，请重新选择。".into())); }
+        Ok(())
+    }).await.map_err(|_| CmdError("无法检查启动程序。".into()))?
+}
+
+#[cfg(test)]
+mod executable_selection_tests {
+    use super::*;
+    #[tokio::test]
+    async fn selected_executable_must_be_an_existing_absolute_exe() {
+        let root = std::env::temp_dir().join(format!("starrygal-exe-selection-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let exe = root.join("Game launch.exe");
+        std::fs::write(&exe, b"test fixture - never execute").unwrap();
+        game_executable_validate(exe.to_string_lossy().into_owned()).await.unwrap();
+        assert!(game_executable_validate(root.join("missing.exe").to_string_lossy().into_owned()).await.is_err());
+        assert!(game_executable_validate("relative.exe".into()).await.is_err());
+        let text = root.join("readme.txt");
+        std::fs::write(&text, b"not an executable").unwrap();
+        assert!(game_executable_validate(text.to_string_lossy().into_owned()).await.is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
 /// Fetch the sqlite connection pool for our database.
 ///
 /// `DbPool` is an enum over the enabled drivers with public variants (it has

@@ -9,6 +9,7 @@ export interface GameMetadata {
   releaseDate?: string | null;
   tags?: string[];
   videoUrl?: string | null;
+  screenshots?: string[];
   touchgalId?: string | null;
   touchgalUrl?: string | null;
   sourceTitle?: string | null;
