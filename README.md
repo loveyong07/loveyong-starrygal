@@ -19,6 +19,8 @@ StarryGal 是一个Galgame启动器。提供Galgame启动、Galgame下载等服�
 
 界面仅面向桌面使用，最小宽度为 1100px。在线预览保留桌面布局。Windows x64 安装包与便携版通过 [GitHub Releases](https://github.com/loveyong07/loveyong-starrygal/releases/latest) 提供，安装向导可自行选择安装文件夹。
 
+桌面版默认以 1280×720 普通窗口打开，可拖动边框自由调整宽高，也可使用系统标题栏的最大化按钮。
+
 应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用 Logo、桌面图标和网页图标统一采用用户原创图片提取的人物抱星图案。
 
 本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.2.0**，修改日期为 **2026-10-30**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
