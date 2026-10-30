@@ -274,8 +274,8 @@ export function AboutDialog({ close }: { close: () => void }) {
           <ArrowUpRightIcon size={14} />
         </a>
         <p>
-          免费开源，不附带担保。完整许可见源码中的 LICENSE。TouchGal API
-          将于正式接口提供后接入。
+          免费开源，不附带担保。完整许可见源码中的 LICENSE。游戏资料由 TouchGal
+          官方元数据 API 提供。
         </p>
       </div>
       <div className="gg-dialog-footer">
