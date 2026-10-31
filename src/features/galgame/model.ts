@@ -6,17 +6,15 @@ export const REPOSITORY_URL =
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
 // Increment only when the announcement itself changes so each notice is shown once.
-export const NOTICE_VERSION = "3";
+export const NOTICE_VERSION = "4";
 // Permanent announcement. Future releases must only edit NOTICE_UPDATES below.
 export const NOTICE_TEXT =
   "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入";
 export const NOTICE_UPDATES = [
-  "游戏详情页点击封面图片可放大查看完整封面。",
-  "记住游戏库排序和网格 / 列表选择，下次打开沿用上次设置。",
-  "自动查找过滤补丁、备份等辅助目录，所有扫描结果确认后再加入游戏库。",
-  "名称搜索兼容大小写、空格和标点差异；添加游戏可用至少 3 个字符的名称片段或关键词搜索，选中作品后确认添加。",
-  "每次进入游戏详情从顶部开始；窗口按钮融入界面，移除系统标题栏。",
-  "新版安装包支持在原安装目录覆盖升级，保留设置、游戏库和游玩记录。",
+  "修复窗口宽高无法记住的问题，下次启动恢复上次窗口尺寸与最大化状态。",
+  "左下角新增 InariGAL下载，TouchGal 入口统一命名为 TouchGal下载，保留补丁下载。",
+  "修复最大化窗口从托盘恢复或再次启动唤醒时意外还原的问题。",
+  "优化较矮窗口的侧栏布局，修正关闭提示中的旧名称与说明。",
 ];
 
 export interface GameExtras {

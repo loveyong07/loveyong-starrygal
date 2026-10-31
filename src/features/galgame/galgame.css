@@ -241,7 +241,7 @@
 }
 .gg-sidebar-spacer {
   flex: 1;
-  min-height: 65px;
+  min-height: 12px;
 }
 .gg-source-card {
   display: flex;
@@ -1916,6 +1916,20 @@
   font-size: 11px;
 }
 
+@media (max-height: 780px) {
+  .gg-sidebar {
+    padding-top: 24px;
+  }
+  .gg-brand {
+    margin-bottom: 28px;
+  }
+  .gg-collection-caption {
+    margin-top: 24px;
+  }
+  .gg-sidebar-bottom {
+    margin-top: 14px;
+  }
+}
 @media (min-width: 1500px) {
   .gg-sidebar {
     width: 240px;

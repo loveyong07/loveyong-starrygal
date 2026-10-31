@@ -82,6 +82,16 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(commands::backup::restore_plugin())
+        // Keep the normal size when maximized/minimized, and reopen visibly
+        // even when the previous session ended while hidden in the tray.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

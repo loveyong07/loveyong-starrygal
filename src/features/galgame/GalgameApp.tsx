@@ -898,14 +898,28 @@ export default function GalgameApp() {
           <ExternalLink
             className="gg-source-card gg-download-card"
             href="https://www.touchgal.ink/"
-            label="Galgame下载 · TouchGal"
+            label="TouchGal下载"
           >
             <span className="gg-source-icon">
               <GameControllerIcon size={20} />
             </span>
             <span>
-              <strong>Galgame下载</strong>
+              <strong>TouchGal下载</strong>
               <small>前往 TouchGal</small>
+            </span>
+            <ArrowUpRightIcon size={14} />
+          </ExternalLink>
+          <ExternalLink
+            className="gg-source-card gg-download-card"
+            href="https://inarigal.com/"
+            label="InariGAL下载"
+          >
+            <span className="gg-source-icon">
+              <GameControllerIcon size={20} />
+            </span>
+            <span>
+              <strong>InariGAL下载</strong>
+              <small>前往 InariGAL</small>
             </span>
             <ArrowUpRightIcon size={14} />
           </ExternalLink>

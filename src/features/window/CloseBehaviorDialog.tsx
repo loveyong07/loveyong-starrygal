@@ -105,8 +105,8 @@ export function CloseBehaviorDialog() {
       onClose={() => {
         if (!busy) setOpen(false);
       }}
-      title="关闭恋页"
-      description="选择关闭窗口时的行为；之后可在「设置 → 窗口」中修改。"
+      title="关闭 StarryGal"
+      description="选择关闭窗口时的行为；勾选「今后不再提示」后会记住本次选择。"
       className="max-w-md"
       footer={
         <>
@@ -129,10 +129,10 @@ export function CloseBehaviorDialog() {
       <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         {runningCount > 0 ? <p className="rounded-md border border-primary/40 bg-primary/10 p-3">还有 {runningCount} 款游戏正在运行。缩小至托盘可以继续计时；结算并退出会保存截至此刻的时长，游戏继续运行，退出后的时间不再记录。</p> : null}
         <p>
-          <span className="font-medium text-foreground">缩小至托盘</span>：窗口隐藏，应用继续在系统托盘运行；点击托盘图标或菜单「显示恋页」即可恢复。
+          <span className="font-medium text-foreground">缩小至托盘</span>：窗口隐藏，应用继续在系统托盘运行；点击托盘图标或菜单「显示 StarryGal」即可恢复。
         </p>
         <p>
-          <span className="font-medium text-foreground">直接关闭</span>：退出恋页进程。托盘菜单里的「退出恋页」也会直接退出。
+          <span className="font-medium text-foreground">直接关闭</span>：退出 StarryGal 进程。托盘菜单里的「退出 StarryGal」也会直接退出。
         </p>
         {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
       </div>
