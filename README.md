@@ -23,11 +23,11 @@ StarryGal 是一款免费开源的 Galgame 启动器，基于 KoiPage，支持�
 
 界面仅面向桌面使用，最小宽度为 1100px。在线预览保留桌面布局。Windows x64 安装包与便携版通过 [GitHub Releases](https://github.com/loveyong07/loveyong-starrygal/releases/latest) 提供，安装向导可自行选择安装文件夹。
 
-桌面版默认以 1280×720 普通窗口打开。窗口按钮位于界面右上角，可拖动顶部空白区域移动窗口、双击最大化，拖动边缘调整宽高。
+桌面版首次以 1280×720 普通窗口打开，之后会记住调整后的宽高和最大化状态。窗口按钮位于界面右上角，可拖动顶部空白区域移动窗口、双击最大化，拖动边缘调整宽高。
 
 应用与安装后显示的名称为 **StarryGal**，源码仓库名为 **loveyong-starrygal**。应用 Logo、桌面图标和网页图标统一采用用户原创图片提取的人物抱星图案。
 
-本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.2.3**，修改日期为 **2026-10-30**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
+本项目基于 [morilove37/KoiPage](https://github.com/morilove37/KoiPage) 修改，当前版本为 **0.2.4**，修改日期为 **2026-10-31**。代码采用 **GPL-3.0-only**，完整许可见 [LICENSE](LICENSE)。
 
 ## 功能
 
@@ -40,7 +40,7 @@ StarryGal 是一款免费开源的 Galgame 启动器，基于 KoiPage，支持�
 - **TouchGal 资料**：自动补全明确匹配的作品，也可整库补全、搜索并手动确认条目。添加游戏或匹配资料时，可输入至少 3 个字符的部分名称、外文词语或别名，查看候选与资料预览后确认选择；适用于所有作品，无需记住完整标题。展示封面、简介、会社、发售日、只读标签和社区评分，保留自定义封面与手动设置的 PV。
 - **截图与 PV / OP**：识别公开简介中的 Markdown 图片和 TouchGal 视频标记。截图紧接游戏介绍并支持放大，官网链接可以点击打开。直接媒体内嵌播放，视频站页面使用浏览器播放，也可手动修改或隐藏影片。
 - **启动 EXE**：多个程序时可自行指定实际使用的游戏 EXE，显示当前启动文件名。桌面版会验证文件存在；Steam 条目可切回客户端启动。
-- **资源与补丁**：提供当前作品的 TouchGal 资源与补丁页面直达入口，启动器内不加载下载列表。
+- **资源与补丁**：左下角提供“TouchGal下载”“InariGAL下载”和“补丁下载”，通过系统浏览器分别打开 [TouchGal](https://www.touchgal.ink/)、[InariGAL](https://inarigal.com/) 与 [Moyu Moe](https://www.moyu.moe/)。详情页保留当前作品的 TouchGal 资源与补丁页面直达入口，启动器内不加载下载列表。
 - **透明玻璃**：可调整不透明度、柔焦、主题色、星光与本地背景。
 - **更新与联系**：应用启动后会检查本项目的新版本；也可在左下角“展开 → 检查更新”手动查询。发现新版本后提供 GitHub Releases 下载入口；“反馈与联系”打开 [联系页面](https://loveyong07.top/contact)。
 

@@ -79,7 +79,7 @@ pub fn show_main_window(app: &AppHandle) {
 #[cfg(windows)]
 fn force_native_show(window: &tauri::WebviewWindow) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        SW_RESTORE, SW_SHOW, SetForegroundWindow, ShowWindow,
+        IsIconic, SW_RESTORE, SW_SHOW, SetForegroundWindow, ShowWindow,
     };
 
     let Some(hwnd) = top_level_window(window) else {
@@ -87,8 +87,9 @@ fn force_native_show(window: &tauri::WebviewWindow) {
     };
     // SAFETY: `hwnd` is this process' own top-level window.
     unsafe {
-        ShowWindow(hwnd, SW_SHOW);
-        ShowWindow(hwnd, SW_RESTORE);
+        // SW_RESTORE also unmaximizes a visible/hidden maximized window.
+        // Only restore minimized windows; tray activation must retain size.
+        ShowWindow(hwnd, if IsIconic(hwnd) != 0 { SW_RESTORE } else { SW_SHOW });
         SetForegroundWindow(hwnd);
     }
 }

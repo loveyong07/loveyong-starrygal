@@ -1,6 +1,6 @@
 [package]
 name = "loveyong-starrygal"
-version = "0.2.3"
+version = "0.2.4"
 license = "GPL-3.0-only"
 description = "loveyong-starrygal - free open-source Galgame launcher"
 authors = ["loveyong07", "morilove37 (KoiPage upstream)"]
@@ -64,6 +64,7 @@ strip = true
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2"
+tauri-plugin-window-state = "2"
 
 # The Magpie integration reads an executable's version resource and enumerates
 # `Magpie.exe` processes — both live in Win32 APIs that have no std equivalent.
