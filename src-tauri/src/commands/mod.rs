@@ -17,6 +17,7 @@ pub mod covers;
 pub mod games;
 pub mod metadata;
 pub mod touchgal;
+mod touchgal_cache;
 pub mod model;
 pub mod play_sessions;
 pub mod scan_roots;

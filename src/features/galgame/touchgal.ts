@@ -16,6 +16,7 @@ export interface TouchGalRequest {
   page?: number;
   allowNsfw: boolean;
   apiToken?: string;
+  forceRefresh?: boolean;
 }
 export type TouchGalTransport = (
   request: TouchGalRequest,
@@ -234,9 +235,18 @@ export function createTouchGalClient(
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
     return unwrapTouchGal(result);
   };
-  const searchPage = async (keyword: string, signal: AbortSignal, page = 1) => {
+  const searchPage = async (
+    keyword: string,
+    signal: AbortSignal,
+    page = 1,
+    forceRefresh = false,
+  ) => {
     const name = searchName(keyword);
-    const data = await request("search", { keyword: name, page }, signal);
+    const data = await request(
+      "search",
+      { keyword: name, page, forceRefresh },
+      signal,
+    );
     const items: TouchGalCandidate[] = Array.isArray(data.items)
       ? data.items.flatMap((value) => {
           const item = object(value);
@@ -252,21 +262,30 @@ export function createTouchGalClient(
       keyword: name,
     };
   };
-  const search = async (keyword: string, signal: AbortSignal, page = 1) => {
+  const search = async (
+    keyword: string,
+    signal: AbortSignal,
+    page = 1,
+    forceRefresh = false,
+  ) => {
     // Validate the original query even when it would yield a shorter fallback.
-    let result = await searchPage(keyword, signal, page);
+    let result = await searchPage(keyword, signal, page, forceRefresh);
     if (page !== 1 || result.items.length || result.hasMore) return result;
     for (const fallback of titleSearchKeywords(keyword).slice(1)) {
-      result = await searchPage(fallback, signal);
+      result = await searchPage(fallback, signal, 1, forceRefresh);
       if (result.items.length || result.hasMore) break;
     }
     return result;
   };
-  const detail = async (uniqueId: string, signal: AbortSignal) => {
+  const detail = async (
+    uniqueId: string,
+    signal: AbortSignal,
+    forceRefresh = false,
+  ) => {
     if (!/^[a-z\d]{8}$/i.test(uniqueId))
       throw new Error("无效的 TouchGal 条目编号。");
     const result = parseTouchGalDetail(
-      await request("detail", { uniqueId }, signal),
+      await request("detail", { uniqueId, forceRefresh }, signal),
     );
     if (result.touchgalId !== uniqueId || !result.title)
       throw new Error("条目资料不完整，请稍后重试。");

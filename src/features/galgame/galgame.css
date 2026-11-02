@@ -2872,6 +2872,12 @@
   justify-content: space-between;
   gap: 18px;
 }
+
+.gg-story-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .gg-source-results {
   display: grid;
   gap: 8px;

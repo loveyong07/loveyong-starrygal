@@ -127,7 +127,7 @@ export default function GamePage({
   const [coverError, setCoverError] = useState("");
   const [coverNotice, setCoverNotice] = useState("");
   const [coverOpen, setCoverOpen] = useState(false);
-  const [matching, setMatching] = useState(false);
+  const [matching, setMatching] = useState<"match" | "refresh" | null>(null);
   const [videoDraft, setVideoDraft] = useState(videoUrl || "");
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [choosingExecutable, setChoosingExecutable] = useState(false);
@@ -407,13 +407,24 @@ export default function GamePage({
               <span className="gg-section-kicker">THE STORY</span>
               <h2>关于这段故事</h2>
             </div>
-            <button
-              className="gg-button gg-secondary"
-              disabled={metadataBusy}
-              onClick={() => setMatching(true)}
-            >
-              匹配资料
-            </button>
+            <div className="gg-story-actions">
+              {game.touchgalId && (
+                <button
+                  className="gg-button gg-secondary"
+                  disabled={metadataBusy}
+                  onClick={() => setMatching("refresh")}
+                >
+                  更新资料
+                </button>
+              )}
+              <button
+                className="gg-button gg-secondary"
+                disabled={metadataBusy}
+                onClick={() => setMatching("match")}
+              >
+                匹配资料
+              </button>
+            </div>
           </header>
           {metadataMessage && (
             <p className="gg-field-note" role="status">
@@ -614,8 +625,11 @@ export default function GamePage({
         <TouchGalMatchDialog
           title={game.title}
           client={metadataClient}
-          close={() => setMatching(false)}
+          close={() => setMatching(null)}
           apply={applyMetadata}
+          initialId={
+            matching === "refresh" ? (game.touchgalId ?? undefined) : undefined
+          }
         />
       )}
       {choosingExecutable && (

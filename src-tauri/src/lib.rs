@@ -186,6 +186,8 @@ pub fn run() {
             // external metadata (NextMoe / VNDB / Bangumi)
             commands::metadata::metadata_search,
             commands::touchgal::touchgal_request,
+            commands::touchgal::touchgal_cache_directory,
+            commands::touchgal::touchgal_cache_open,
             commands::games::game_executable_validate,
             commands::metadata::metadata_detail,
             commands::metadata::metadata_apply,

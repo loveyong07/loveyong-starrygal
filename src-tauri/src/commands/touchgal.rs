@@ -1,6 +1,8 @@
 //! Public StarryGal relay client. Optional user-supplied TouchGal API token is supported locally.
 use super::error::{CmdError, CmdResult};
 use std::time::Duration;
+use tauri::{AppHandle, Manager};
+use super::touchgal_cache::{CacheKey, load_or_fetch};
 
 fn clean_token(api_token: Option<&str>) -> CmdResult<Option<String>> {
     let Some(raw) = api_token else { return Ok(None) };
@@ -70,15 +72,47 @@ fn request_url(endpoint: &str, action: &str, keyword: Option<&str>, unique_id: O
 }
 
 #[tauri::command]
-pub async fn touchgal_request(endpoint: String, action: String, keyword: Option<String>, unique_id: Option<String>, page: Option<u32>, allow_nsfw: bool, api_token: Option<String>) -> CmdResult<serde_json::Value> {
+pub async fn touchgal_request(app: AppHandle, endpoint: String, action: String, keyword: Option<String>, unique_id: Option<String>, page: Option<u32>, allow_nsfw: bool, api_token: Option<String>, force_refresh: Option<bool>) -> CmdResult<serde_json::Value> {
     let token = clean_token(api_token.as_deref())?;
+    // Use the credential-free relay URL as the stable key even for direct API
+    // requests with a user's token. Changing tokens does not discard metadata.
+    let public_url = request_url(&endpoint, &action, keyword.as_deref(), unique_id.as_deref(), page, allow_nsfw)?;
     let trimmed_endpoint = endpoint.trim().trim_end_matches('/');
     let use_direct = token.is_some() && (trimmed_endpoint == "https://loveyong07.top/api/starrygal" || trimmed_endpoint.starts_with("https://developer.touchgal.com"));
     let url = if use_direct {
         direct_upstream_url(&action, keyword.as_deref(), unique_id.as_deref(), page, allow_nsfw)?
     } else {
-        request_url(&endpoint, &action, keyword.as_deref(), unique_id.as_deref(), page, allow_nsfw)?
+        public_url.clone()
     };
+    if ["search", "detail"].contains(&action.as_str()) {
+        let root = cache_directory(&app)?;
+        let key = CacheKey::new(&public_url, &action, unique_id.as_deref());
+        return load_or_fetch(&root, &key, force_refresh.unwrap_or(false), || send_request(url, token)).await;
+    }
+    send_request(url, token).await
+}
+
+fn cache_directory(app: &AppHandle) -> CmdResult<std::path::PathBuf> {
+    app.path().app_data_dir().map(|path| path.join("touchgal-cache").join("v1"))
+        .map_err(|_| CmdError("无法定位本地资料缓存目录。".into()))
+}
+
+#[tauri::command]
+pub fn touchgal_cache_directory(app: AppHandle) -> CmdResult<String> {
+    let root = cache_directory(&app)?;
+    std::fs::create_dir_all(&root).map_err(|_| CmdError("无法创建本地资料缓存目录。".into()))?;
+    Ok(root.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn touchgal_cache_open(app: AppHandle) -> CmdResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    let path = touchgal_cache_directory(app.clone())?;
+    app.opener().open_path(path, None::<&str>)
+        .map_err(|_| CmdError("未能打开本地资料文件夹。".into()))
+}
+
+async fn send_request(url: reqwest::Url, token: Option<String>) -> CmdResult<serde_json::Value> {
     let client = reqwest::Client::builder().timeout(Duration::from_secs(20)).user_agent("StarryGal/0.2 (+https://github.com/loveyong07/loveyong-starrygal)").redirect(reqwest::redirect::Policy::limited(3)).build().map_err(|_| CmdError("资料查询初始化失败。".into()))?;
     let mut req = client.get(url).header(reqwest::header::ACCEPT, "application/json");
     if let Some(secret) = &token {

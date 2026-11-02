@@ -523,9 +523,9 @@ export default function GalgameApp() {
     replaceGame(await updateGame(id, metadataPatch(current, result, replace)));
     setMetadataMessage("资料已保存。");
   }
-  async function completeLibraryMetadata() {
+  async function completeLibraryMetadata(newGames?: LibraryGame[]) {
     if (metadataBatch) {
-      metadataBatchController.current?.abort();
+      if (!newGames) metadataBatchController.current?.abort();
       return;
     }
     const controller = new AbortController();
@@ -534,7 +534,9 @@ export default function GalgameApp() {
     let matched = 0;
     let checked = 0;
     try {
-      const pending = (await listGames()).filter((item) => !item.touchgalId);
+      const pending = (newGames ?? (await listGames())).filter(
+        (item) => !item.touchgalId,
+      );
       for (const item of pending) {
         if (controller.signal.aborted) break;
         if ([...item.title.trim()].length < 3) {
@@ -634,16 +636,18 @@ export default function GalgameApp() {
 
   async function importCandidates(items: DiscoveredGame[]) {
     let imported = 0;
+    const importedGames: LibraryGame[] = [];
     const failed: DiscoveredGame[] = [];
     for (const item of items) {
       try {
-        await addGame({
+        const added = await addGame({
           title: item.title.trim(),
           installPath: item.installPath,
           exePath: item.exePath,
           source: item.source,
           steamAppId: item.steamAppId,
         });
+        importedGames.push(added);
         imported++;
       } catch {
         const current = await listGames();
@@ -658,6 +662,8 @@ export default function GalgameApp() {
       }
     }
     await refresh();
+    if (sourceReady && importedGames.length && !metadataBatch)
+      void completeLibraryMetadata(importedGames);
     if (failed.length) {
       setCandidates(failed);
       setModal("scan");
