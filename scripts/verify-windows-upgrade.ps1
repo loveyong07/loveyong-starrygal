@@ -42,6 +42,11 @@ with sqlite3.connect(sys.argv[1]) as db:
 & python -c $databaseFixture $databasePath
 if ($LASTEXITCODE -ne 0) { throw 'Could not prepare database preservation fixtures.' }
 $databaseHash = (Get-FileHash -LiteralPath $databasePath -Algorithm SHA256).Hash
+$metadataCacheDirectory = Join-Path (Split-Path -Parent $databasePath) 'touchgal-cache\v1\detail'
+New-Item -ItemType Directory -Path $metadataCacheDirectory -Force | Out-Null
+$metadataCacheFile = Join-Path $metadataCacheDirectory 'upgrade-preservation-fixture.json'
+Set-Content -LiteralPath $metadataCacheFile -Value '{"version":1,"response":{"success":true,"data":{"name":"preserved metadata"}}}' -Encoding utf8
+$metadataCacheHash = (Get-FileHash -LiteralPath $metadataCacheFile -Algorithm SHA256).Hash
 $personalFile = Join-Path $installRoot 'user-kept-settings.json'
 Set-Content -LiteralPath $personalFile -Value '{"keep":"personal file in installation directory"}' -Encoding utf8
 $personalHash = (Get-FileHash -LiteralPath $personalFile -Algorithm SHA256).Hash
@@ -66,6 +71,7 @@ if ((Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash -ne $expecte
 if (Test-Path -LiteralPath $retiredBinary) { throw 'The retired managed executable was not removed.' }
 if ((Get-FileHash -LiteralPath $personalFile -Algorithm SHA256).Hash -ne $personalHash) { throw 'Upgrade modified a personal installation-directory file.' }
 if ((Get-FileHash -LiteralPath $databasePath -Algorithm SHA256).Hash -ne $databaseHash) { throw 'Upgrade modified the user database.' }
+if ((Get-FileHash -LiteralPath $metadataCacheFile -Algorithm SHA256).Hash -ne $metadataCacheHash) { throw 'Upgrade modified the metadata cache.' }
 
 $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
 try {
@@ -74,4 +80,4 @@ try {
 } finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id }
 }
-Write-Output 'In-place upgrade preserved the directory, database and personal files; replaced and cleaned managed executables; startup passed.'
+Write-Output 'In-place upgrade preserved the directory, database, metadata cache and personal files; replaced and cleaned managed executables; startup passed.'

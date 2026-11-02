@@ -1,7 +1,7 @@
 {
   "name": "loveyong-starrygal",
   "private": true,
-  "version": "0.2.4",
+  "version": "0.2.5",
   "license": "GPL-3.0-only",
   "packageManager": "pnpm@12.11.2",
   "type": "module",
@@ -11,7 +11,7 @@
     "build:pages": "tsc --noEmit && vite build --mode pages",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
-    "test:touchgal": "node --test tests/touchgal.test.mjs tests/touchgal-relay.test.mjs tests/touchgal-introduction.test.mjs",
+    "test:touchgal": "node --test tests/touchgal.test.mjs tests/touchgal-cache.test.mjs tests/touchgal-relay.test.mjs tests/touchgal-introduction.test.mjs",
     "check:ipc": "node scripts/check-ipc-contract.mjs",
     "check:release": "node scripts/verify-release.mjs",
     "test:share": "node --test tests/share-model.test.mjs",

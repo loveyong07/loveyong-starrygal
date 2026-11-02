@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   ArrowUpRightIcon,
   CheckIcon,
@@ -63,8 +64,23 @@ export function TouchGalSourceDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [cachePath, setCachePath] = useState("");
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    if (!desktop) return;
+    let active = true;
+    void invoke<string>("touchgal_cache_directory")
+      .then((path) => {
+        if (active) setCachePath(path);
+      })
+      .catch((cause) => {
+        if (active) setError(String(cause));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   async function check() {
     setBusy(true);
     setError("");
@@ -98,6 +114,32 @@ export function TouchGalSourceDialog({
         按游戏名称补全封面、简介、截图、PV、会社、发售日、标签与社区评分。默认使用公共资料服务，若遇调用限制也可填入自行申请的
         TouchGal Token。
       </p>
+      <p className="gg-field-note">
+        搜索结果与游戏详情获取后长期保存在本地。再次打开或重启优先读取本地资料，
+        新增游戏或尚未获取的内容才请求接口；需要新内容时，在详情中选择“更新资料”或在匹配窗口勾选“从网站重新获取”。
+        测试连接也会请求接口。
+      </p>
+      {desktop ? (
+        <div className="gg-source-credit">
+          <button
+            type="button"
+            className="gg-button gg-secondary"
+            disabled={!cachePath}
+            onClick={() => {
+              void invoke("touchgal_cache_open").catch(() =>
+                setError("未能打开本地资料文件夹：" + cachePath),
+              );
+            }}
+          >
+            打开本地资料文件夹
+          </button>
+          {cachePath && (
+            <span style={{ overflowWrap: "anywhere" }}>{cachePath}</span>
+          )}
+        </div>
+      ) : (
+        <p className="gg-field-note">网页版资料缓存在当前浏览器本地存储中。</p>
+      )}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -197,6 +239,7 @@ export function TouchGalMatchDialog({
   apply,
   selectionOnly = false,
   autoSearch = false,
+  initialId,
 }: {
   title: string;
   client: TouchGalClient;
@@ -204,6 +247,7 @@ export function TouchGalMatchDialog({
   apply: (metadata: GameMetadata, replace: boolean) => Promise<void>;
   selectionOnly?: boolean;
   autoSearch?: boolean;
+  initialId?: string;
 }) {
   const [query, setQuery] = useState(title);
   const [items, setItems] = useState<TouchGalCandidate[]>([]);
@@ -215,11 +259,20 @@ export function TouchGalMatchDialog({
   const [error, setError] = useState("");
   const [replace, setReplace] = useState(false);
   const [selected, setSelected] = useState<GameMetadata | null>(null);
+  const [refresh, setRefresh] = useState(!!initialId);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
-    const timer = autoSearch
-      ? window.setTimeout(() => void search(), 0)
-      : undefined;
+    const timer =
+      initialId || autoSearch
+        ? window.setTimeout(() => {
+            if (initialId)
+              void run(async (signal) => {
+                const result = await client.detail(initialId, signal, true);
+                if (!signal.aborted) setSelected(result);
+              });
+            else void search();
+          }, 0)
+        : undefined;
     return () => {
       if (timer !== undefined) window.clearTimeout(timer);
       controller.current?.abort();
@@ -247,6 +300,7 @@ export function TouchGalMatchDialog({
         next === 1 ? query : searchKeyword,
         signal,
         next,
+        refresh,
       );
       if (signal.aborted) return;
       setItems(result.items);
@@ -258,7 +312,13 @@ export function TouchGalMatchDialog({
   }
   return (
     <Modal
-      title={selectionOnly ? "搜索游戏作品" : "匹配游戏资料"}
+      title={
+        initialId
+          ? "更新游戏资料"
+          : selectionOnly
+            ? "搜索游戏作品"
+            : "匹配游戏资料"
+      }
       subtitle="支持部分名称、外文词语或别名；至少 3 个字符，选择后再确认。"
       close={close}
     >
@@ -292,6 +352,25 @@ export function TouchGalMatchDialog({
           搜索
         </button>
       </form>
+      <label className="gg-check-field">
+        <input
+          type="checkbox"
+          checked={refresh}
+          disabled={busy}
+          onChange={(event) => {
+            setRefresh(event.target.checked);
+            setSelected(null);
+            setItems([]);
+            setSearched(false);
+            setHasMore(false);
+            setPage(1);
+          }}
+        />
+        从网站重新获取（消耗接口额度并更新本地缓存）
+      </label>
+      <p className="gg-field-note">
+        默认使用已保存的搜索结果与详情。没有本地记录的内容会自动获取并保存。
+      </p>
       {error && (
         <p className="gg-form-error" role="alert">
           {error}
@@ -355,7 +434,11 @@ export function TouchGalMatchDialog({
                 disabled={busy}
                 onClick={() =>
                   void run(async (signal) => {
-                    const result = await client.detail(item.uniqueId, signal);
+                    const result = await client.detail(
+                      item.uniqueId,
+                      signal,
+                      refresh,
+                    );
                     if (!signal.aborted) setSelected(result);
                   })
                 }
