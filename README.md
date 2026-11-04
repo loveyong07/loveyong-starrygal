@@ -14,10 +14,10 @@
 </p>
 
 <p align="center">
-  <img src="./public/brand/starrygal-preview.jpg" alt="StarryGal 启动器界面预览" width="900" />
+  <img src="./public/brand/starrygal-preview.png" alt="StarryGal v0.3.0 游戏库与通透玻璃界面预览" width="900" />
 </p>
 
-<p align="center">界面演示（截图为 0.2.x 版本），可在“外观与玻璃”中自定义背景</p>
+<p align="center">StarryGal v0.3.0 实际界面，可在“外观与玻璃”中自定义背景和透明度</p>
 
 StarryGal 是一款免费开源的 Galgame 启动器，基于 KoiPage，支持本地游戏与 Steam 游戏库管理、游戏启动、TouchGal 资料匹配，以及游戏资源与补丁页面入口。游戏文件的下载在对应网站完成。
 
