@@ -21,6 +21,7 @@ import {
   XIcon,
 } from "@phosphor-icons/react";
 import { BRAND } from "@/lib/brand";
+import { GLASS_PRESETS } from "./appearance";
 import {
   addGame,
   defaultAppearance,
@@ -47,16 +48,32 @@ export function Modal({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
   const headingId = useId();
+  const descriptionId = useId();
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
-    return () => el?.close();
+    return () => {
+      el?.close();
+      queueMicrotask(() => {
+        if (
+          !document.querySelector("dialog[open]") &&
+          returnFocus.current?.isConnected
+        )
+          returnFocus.current.focus({ preventScroll: true });
+      });
+    };
   }, []);
   return (
     <dialog
       ref={ref}
       aria-labelledby={headingId}
+      aria-describedby={subtitle ? descriptionId : undefined}
       className={["gg-dialog", wide && "gg-dialog-wide"]
         .filter(Boolean)
         .join(" ")}
@@ -79,7 +96,7 @@ export function Modal({
       <header className="gg-dialog-heading">
         <div>
           <h2 id={headingId}>{title}</h2>
-          {subtitle && <p>{subtitle}</p>}
+          {subtitle && <p id={descriptionId}>{subtitle}</p>}
         </div>
         <button
           className="gg-icon-button"
@@ -129,6 +146,50 @@ export function NoticeDialog({ close }: { close: () => void }) {
   );
 }
 
+function AppearanceRange({
+  id,
+  title,
+  value,
+  max = 100,
+  suffix = "%",
+  note,
+  change,
+}: {
+  id: string;
+  title: string;
+  value: number;
+  max?: number;
+  suffix?: string;
+  note?: string;
+  change: (value: number) => void;
+}) {
+  return (
+    <div className="gg-appearance-range">
+      <label className="gg-range-label" htmlFor={id}>
+        {title}
+        <output htmlFor={id}>
+          {value}
+          {suffix}
+        </output>
+      </label>
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={max}
+        value={value}
+        onChange={(event) => change(Number(event.target.value))}
+        aria-valuetext={`${value}${suffix}`}
+        style={{
+          background: `linear-gradient(to right, var(--gg-primary) ${(value / max) * 100}%, rgba(var(--gg-primary-rgb), .16) ${(value / max) * 100}%)`,
+        }}
+        aria-describedby={note ? `${id}-note` : undefined}
+      />
+      {note && <p id={`${id}-note`}>{note}</p>}
+    </div>
+  );
+}
+
 export function AppearanceDialog({
   appearance,
   change,
@@ -142,85 +203,144 @@ export function AppearanceDialog({
 }) {
   return (
     <Modal
-      title="让这里，更像你"
-      subtitle="调一点光，留一点透明。所有调整即时生效。"
+      title="外观与玻璃"
+      subtitle="让光透进来。每一处透明，都由你决定。"
       close={close}
+      wide
     >
-      <div className="gg-settings-section">
-        <span className="gg-settings-label">
-          <PaletteIcon size={18} />
-          主题色
-        </span>
-        <div className="gg-color-options">
-          {(
-            [
-              ["blue", "晴空蓝"],
-              ["lilac", "雾凇紫"],
-              ["rose", "初樱粉"],
-            ] as const
-          ).map(([value, label]) => (
+      <div className="gg-appearance-controls">
+        <div className="gg-material-options" role="group" aria-label="玻璃预设">
+          {GLASS_PRESETS.map((preset) => (
             <button
-              key={value}
-              aria-pressed={appearance.palette === value}
-              className={appearance.palette === value ? "selected" : ""}
-              onClick={() => change({ palette: value })}
+              key={preset.name}
+              aria-pressed={Object.entries(preset.values).every(
+                ([key, value]) => appearance[key as keyof Appearance] === value,
+              )}
+              onClick={() => change({ ...preset.values })}
             >
-              <i data-color={value} />
-              {label}
-              {appearance.palette === value && <CheckIcon size={15} />}
+              <span
+                className={`gg-material-swatch material-${preset.name === "通透" ? "clear" : preset.name === "柔和" ? "soft" : "read"}`}
+              />
+              <strong>{preset.name}</strong>
+              <small>{preset.description}</small>
             </button>
           ))}
         </div>
-      </div>
-      <div className="gg-settings-section">
-        <label className="gg-range-label" htmlFor="glass-opacity">
-          玻璃不透明度<strong>{appearance.opacity}%</strong>
-        </label>
-        <input
-          id="glass-opacity"
-          type="range"
-          min={12}
-          max={75}
-          value={appearance.opacity}
-          onChange={(e) => change({ opacity: Number(e.target.value) })}
-        />
-        <p>降低数值，让背景更清晰地透进来。</p>
-        <label className="gg-range-label" htmlFor="glass-blur">
-          柔焦程度<strong>{appearance.blur}px</strong>
-        </label>
-        <input
-          id="glass-blur"
-          type="range"
-          min={0}
-          max={24}
-          value={appearance.blur}
-          onChange={(e) => change({ blur: Number(e.target.value) })}
-        />
-      </div>
-      <div className="gg-settings-section gg-setting-row">
-        <div>
-          <strong>星光微动</strong>
-          <p>让光点慢慢经过，不打扰阅读。</p>
+        <div className="gg-appearance-grid">
+          <section className="gg-material-sliders" aria-label="透明度与柔焦">
+            <h3>调一点光</h3>
+            <AppearanceRange
+              id="glass-opacity"
+              title="玻璃不透明度"
+              value={appearance.opacity}
+              change={(opacity) => change({ opacity })}
+              note="越低越通透，背景更清晰地透进面板。"
+            />
+            <AppearanceRange
+              id="wallpaper-opacity"
+              title="背景不透明度"
+              value={appearance.wallpaperOpacity}
+              change={(wallpaperOpacity) => change({ wallpaperOpacity })}
+              note="独立调整壁纸显示强度，不影响玻璃设置。"
+            />
+            <AppearanceRange
+              id="content-opacity"
+              title="正文底色强度"
+              value={appearance.contentOpacity}
+              change={(contentOpacity) => change({ contentOpacity })}
+              note="按需给长篇简介增加底色，0% 保持完全通透。"
+            />
+            <AppearanceRange
+              id="glass-blur"
+              title="玻璃柔焦"
+              value={appearance.blur}
+              max={24}
+              suffix="px"
+              change={(blur) => change({ blur })}
+            />
+          </section>
+          <section className="gg-material-personal" aria-label="个性化外观">
+            <h3>留一点喜欢</h3>
+            <div className="gg-settings-label">
+              <PaletteIcon size={16} />
+              主题色
+            </div>
+            <div className="gg-color-options">
+              {(
+                [
+                  ["blue", "晴空蓝"],
+                  ["lilac", "雾凇紫"],
+                  ["rose", "初樱粉"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  aria-pressed={appearance.palette === value}
+                  className={appearance.palette === value ? "selected" : ""}
+                  onClick={() => change({ palette: value })}
+                >
+                  <i data-color={value} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="gg-setting-row">
+              <div>
+                <strong>星光微动</strong>
+                <p>让光点慢慢经过。</p>
+              </div>
+              <button
+                className={`gg-switch ${appearance.particles ? "on" : ""}`}
+                role="switch"
+                aria-label="星光微动"
+                aria-checked={appearance.particles}
+                onClick={() => change({ particles: !appearance.particles })}
+              >
+                <span />
+              </button>
+            </div>
+            <div className="gg-setting-row">
+              <div>
+                <strong>减少动态效果</strong>
+                <p>静止星光，简化切换与过渡。</p>
+              </div>
+              <button
+                className={`gg-switch ${appearance.reduceMotion ? "on" : ""}`}
+                role="switch"
+                aria-label="减少动态效果"
+                aria-checked={appearance.reduceMotion}
+                onClick={() =>
+                  change({ reduceMotion: !appearance.reduceMotion })
+                }
+              >
+                <span />
+              </button>
+            </div>
+            <div className="gg-wallpaper-setting">
+              <strong>你的背景</strong>
+              <p>PNG、JPG 或 WebP，按原图保存。</p>
+              <button
+                className="gg-button gg-secondary"
+                onClick={pickWallpaper}
+              >
+                <ImageSquareIcon size={17} />
+                更换背景
+              </button>
+              {appearance.wallpaper && (
+                <button
+                  className="gg-text-button"
+                  onClick={() => change({ wallpaper: "" })}
+                >
+                  使用默认背景
+                </button>
+              )}
+            </div>
+          </section>
         </div>
-        <button
-          className={"gg-switch " + (appearance.particles ? "on" : "")}
-          role="switch"
-          aria-label="星光微动"
-          aria-checked={appearance.particles}
-          onClick={() => change({ particles: !appearance.particles })}
-        >
-          <span />
-        </button>
-      </div>
-      <div className="gg-settings-section gg-setting-row">
-        <div>
-          <strong>你的背景</strong>
-          <p>PNG、JPG 或 WebP，按原图保存，不限制文件大小。</p>
-        </div>
-        <button className="gg-button gg-secondary" onClick={pickWallpaper}>
-          <ImageSquareIcon size={17} />
-          更换图片
-        </button>
+        <p className="gg-appearance-note">
+          <CheckIcon size={15} />
+          调整即时生效并自动保存，下次打开沿用当前设置。
+        </p>
       </div>
       <div className="gg-dialog-footer">
         <button
@@ -322,18 +442,47 @@ export function AddGameDialog({
     null,
   );
   const picker = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!desktop) return;
+    let active = true;
+    let stop: (() => void) | undefined;
+    void import("@tauri-apps/api/webview")
+      .then(({ getCurrentWebview }) =>
+        getCurrentWebview().onDragDropEvent((event) => {
+          if (!active || event.payload.type !== "drop") return;
+          const executable = event.payload.paths.find((file) =>
+            /\.exe$/i.test(file),
+          );
+          if (executable) acceptFile(executable);
+          else setError("请拖入 .exe 游戏主程序。");
+        }),
+      )
+      .then((unlisten) => {
+        if (active) stop = unlisten;
+        else unlisten();
+      })
+      .catch(() => {
+        /* The file picker and manual path remain available. */
+      });
+    return () => {
+      active = false;
+      stop?.();
+    };
+  }, []);
   function acceptFile(name: string) {
     if (!/\.exe$/i.test(name)) {
       setError("请选择 .exe 游戏主程序。");
       return;
     }
     setPath(name);
-    if (!title) {
+    {
       const base = titleFromPath(name);
       setTitle(
-        /^(game|start|play)$/i.test(base)
-          ? name.split(/[\\/]/).slice(-2, -1)[0] || base
-          : base,
+        (current) =>
+          current ||
+          (/^(game|start|play)$/i.test(base)
+            ? name.split(/[\\/]/).slice(-2, -1)[0] || base
+            : base),
       );
     }
     setError("");
@@ -357,6 +506,7 @@ export function AddGameDialog({
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     if (!title.trim()) {
       setError("请填写游戏的正确名称。");
       return;
@@ -420,6 +570,17 @@ export function AddGameDialog({
       close={close}
     >
       <form onSubmit={(event) => void submit(event)}>
+        <ol className="gg-import-steps" aria-label="添加步骤">
+          <li className={path ? "done" : "active"}>
+            <span>1</span>选择程序
+          </li>
+          <li className={title.trim() ? "done" : ""}>
+            <span>2</span>核对名称与资料
+          </li>
+          <li>
+            <span>3</span>加入收藏
+          </li>
+        </ol>
         <button
           type="button"
           className="gg-file-drop"
@@ -529,7 +690,8 @@ export function AddGameDialog({
           <button
             type="submit"
             className="gg-button gg-primary"
-            disabled={saving}
+            disabled={saving || !title.trim() || !path.trim()}
+            aria-busy={saving}
           >
             {saving ? "添加中…" : "加入我的游戏库"}
             <PlusIcon size={17} />

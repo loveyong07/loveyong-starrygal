@@ -1,5 +1,10 @@
 import { isTauri } from "@tauri-apps/api/core";
 import {
+  defaultAppearance,
+  normalizeAppearance,
+  type Appearance,
+} from "./appearance";
+import {
   gameCreate,
   gameDelete,
   gameUpdate,
@@ -145,42 +150,13 @@ export async function clearPreviewWallpaper(): Promise<void> {
   revokeMediaUrl("wallpaper");
 }
 
-export interface Appearance {
-  opacity: number;
-  blur: number;
-  particles: boolean;
-  palette: "blue" | "lilac" | "rose";
-  wallpaper: string;
-}
-export const defaultAppearance: Appearance = {
-  opacity: 38,
-  blur: 6,
-  particles: true,
-  palette: "blue",
-  wallpaper: "",
-};
+export { defaultAppearance, type Appearance } from "./appearance";
 
 export function loadAppearance(): Appearance {
   try {
-    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}");
-    return {
-      opacity: Number.isFinite(saved.opacity)
-        ? Math.max(12, Math.min(75, saved.opacity))
-        : 38,
-      blur: Number.isFinite(saved.blur)
-        ? Math.max(0, Math.min(24, saved.blur))
-        : 6,
-      particles: typeof saved.particles === "boolean" ? saved.particles : true,
-      palette: ["blue", "lilac", "rose"].includes(saved.palette)
-        ? saved.palette
-        : "blue",
-      wallpaper:
-        typeof saved.wallpaper === "string" &&
-        (/^data:image\/(png|jpeg|webp);base64,/.test(saved.wallpaper) ||
-          saved.wallpaper === WALLPAPER_REF)
-          ? saved.wallpaper
-          : "",
-    };
+    return normalizeAppearance(
+      JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"),
+    );
   } catch {
     return { ...defaultAppearance };
   }

@@ -16,27 +16,18 @@ import {
   CaretDownIcon,
   CheckCircleIcon,
   ClockCounterClockwiseIcon,
-  CloudSlashIcon,
   DownloadSimpleIcon,
-  FolderOpenIcon,
-  GameControllerIcon,
   HeartIcon,
   InfoIcon,
-  ListIcon,
   MagnifyingGlassIcon,
-  PlusIcon,
+  PaletteIcon,
+  DotsThreeIcon,
   SlidersHorizontalIcon,
   SparkleIcon,
-  SquaresFourIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { BRAND } from "@/lib/brand";
-import { coverSrc } from "@/lib/asset";
-import {
-  GAME_STATUS_LABELS,
-  formatPlayTime,
-  type GameStatus,
-} from "@/types/game";
+import { type GameStatus } from "@/types/game";
 import { useAppStore } from "@/store/app";
 import { useGameLauncher } from "@/features/launch/useGameLauncher";
 import { useGameProcessSync } from "@/features/launch/useGameProcess";
@@ -107,12 +98,16 @@ import {
   ScanResultsDialog,
 } from "./StudioDialogs";
 import GamePage from "./GamePage";
+import LibraryView, {
+  type LibraryDensity,
+  type LibrarySort,
+} from "./LibraryView";
 import "./galgame.css";
+import "./studio.css";
 
 type ModalKind =
   "add" | "appearance" | "source" | "about" | "notice" | "scan" | null;
 type Filter = "all" | GameStatus;
-type LibrarySort = "added" | "recent" | "name" | "time";
 type UpdateCheckStatus =
   "idle" | "checking" | "current" | "available" | "no-release" | "error";
 
@@ -158,30 +153,6 @@ function ExternalLink({
   );
 }
 
-function Cover({ game }: { game: LibraryGame }) {
-  const [failed, setFailed] = useState<string | null>(null);
-  const src = coverSrc(game.customCoverPath || game.coverPath);
-  const coverBadge = game.releaseDate?.trim();
-  return (
-    <div className="gg-game-cover">
-      {src && failed !== src ? (
-        <img
-          src={src}
-          alt={game.title + "封面"}
-          loading="lazy"
-          onError={() => setFailed(src)}
-        />
-      ) : (
-        <>
-          <BooksIcon size={36} weight="light" />
-          <span>封面待补充</span>
-        </>
-      )}
-      {coverBadge && <span className="gg-cover-date">{coverBadge}</span>}
-    </div>
-  );
-}
-
 export default function GalgameApp() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -191,6 +162,12 @@ export default function GalgameApp() {
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<LibrarySort>("added");
+  const [density, setDensity] = useState<LibraryDensity>("comfortable");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const libraryScroll = useRef<Record<string, number>>({});
+  const lastLibraryPath = useRef("/library");
+  const steamPending = useRef(new Set<number>());
+  const [steamLaunching, setSteamLaunching] = useState<number[]>([]);
   const [libraryPreferencesReady, setLibraryPreferencesReady] = useState(false);
   const preferenceWrites = useRef(Promise.resolve());
   const main = useRef<HTMLElement>(null);
@@ -203,8 +180,13 @@ export default function GalgameApp() {
   const [updateCheckStatus, setUpdateCheckStatus] =
     useState<UpdateCheckStatus>("idle");
   const [appearance, setAppearance] = useState(loadAppearance);
+  const appearanceRef = useRef(appearance);
+  useLayoutEffect(() => {
+    appearanceRef.current = appearance;
+  }, [appearance]);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
+  const [scanKind, setScanKind] = useState<"automatic" | "folder">("automatic");
   const [scanPath, setScanPath] = useState("");
   const [candidates, setCandidates] = useState<DiscoveredGame[]>([]);
   const [removeId, setRemoveId] = useState<number | null>(null);
@@ -226,6 +208,8 @@ export default function GalgameApp() {
   const [metadataBusy, setMetadataBusy] = useState(false);
   const [metadataMessage, setMetadataMessage] = useState("");
   const [metadataBatch, setMetadataBatch] = useState(false);
+  const [metadataTask, setMetadataTask] = useState("");
+  const [metadataTaskError, setMetadataTaskError] = useState(false);
   const metadataBatchController = useRef<AbortController | null>(null);
   const folderPicker = useRef<HTMLInputElement>(null);
   const wallpaperPicker = useRef<HTMLInputElement>(null);
@@ -240,12 +224,13 @@ export default function GalgameApp() {
   const match = /^\/library\/([1-9]\d*)$/.exec(pathname);
   const detailId = match ? Number(match[1]) : null;
   const game = games.find((item) => item.id === detailId) || null;
+  const libraryPath = detailId === null ? pathname : lastLibraryPath.current;
   const route =
-    pathname === "/favorites"
+    libraryPath === "/favorites"
       ? "favorites"
-      : pathname === "/recent"
+      : libraryPath === "/recent"
         ? "recent"
-        : pathname === "/completed"
+        : libraryPath === "/completed"
           ? "completed"
           : "library";
 
@@ -259,7 +244,10 @@ export default function GalgameApp() {
       setLoading(false);
     }
   }
-  function saveLibraryPreference(key: "sort" | "view", value: string) {
+  function saveLibraryPreference(
+    key: "sort" | "view" | "density",
+    value: string,
+  ) {
     // Serialize writes so rapid changes cannot finish in the wrong order.
     preferenceWrites.current = preferenceWrites.current
       .then(() => writePreference("library." + key, value))
@@ -315,12 +303,19 @@ export default function GalgameApp() {
     void Promise.all([
       readPreference("library.sort"),
       readPreference("library.view"),
+      readPreference("library.density"),
     ])
-      .then(([savedSort, savedView]) => {
+      .then(([savedSort, savedView, savedDensity]) => {
         if (!active) return;
         if (["added", "recent", "name", "time"].includes(savedSort || ""))
           setSort(savedSort as LibrarySort);
         if (savedView === "grid" || savedView === "list") setView(savedView);
+        if (
+          savedDensity === "compact" ||
+          savedDensity === "comfortable" ||
+          savedDensity === "large"
+        )
+          setDensity(savedDensity);
       })
       .catch(() => {
         if (active) setToast("游戏库显示设置暂时无法读取。");
@@ -333,10 +328,39 @@ export default function GalgameApp() {
     };
   }, []);
   useLayoutEffect(() => {
-    // The scrolling element is this pane, not window. Reset before painting a
-    // new route, including opening another game from an already scrolled view.
-    main.current?.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [pathname]);
+    main.current?.scrollTo({
+      top: detailId === null ? libraryScroll.current[route] || 0 : 0,
+      left: 0,
+      behavior: "instant",
+    });
+  }, [pathname, loading]);
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.key.toLowerCase() === "k" || event.key.toLowerCase() === "f")
+      ) {
+        if (
+          document.querySelector(
+            'dialog[open], [role="dialog"][aria-modal="true"], [role="alertdialog"]',
+          )
+        )
+          return;
+        event.preventDefault();
+        if (detailId !== null) navigate(lastLibraryPath.current);
+        searchInput.current?.focus();
+        searchInput.current?.select();
+      }
+      if (event.key === "Escape") {
+        setUtilitiesExpanded(false);
+        document
+          .querySelectorAll(".gg-import-menu[open]")
+          .forEach((el) => el.removeAttribute("open"));
+      }
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, [detailId, navigate]);
   useEffect(() => {
     const timer = window.setTimeout(() => void checkForUpdates(false), 1800);
     const interval = window.setInterval(
@@ -357,6 +381,23 @@ export default function GalgameApp() {
     setQuery("");
     setFilter("all");
   }, [route]);
+  useLayoutEffect(() => {
+    if (detailId === null)
+      main.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [query, filter]);
+  useEffect(() => {
+    if (!utilitiesExpanded) return;
+    const dismiss = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        !target.closest("#gg-utility-menu, .gg-utility-toggle")
+      )
+        setUtilitiesExpanded(false);
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, [utilitiesExpanded]);
   useEffect(() => {
     document.documentElement.className = "galgame-theme";
     document.title = BRAND.title;
@@ -531,14 +572,25 @@ export default function GalgameApp() {
     const controller = new AbortController();
     metadataBatchController.current = controller;
     setMetadataBatch(true);
+    setMetadataTask("正在准备资料补全…");
+    setMetadataTaskError(false);
     let matched = 0;
     let checked = 0;
     try {
       const pending = (newGames ?? (await listGames())).filter(
         (item) => !item.touchgalId,
       );
+      if (!pending.length) {
+        setMetadataTask(
+          "所有作品已有匹配资料。需要刷新时，可在作品详情中更新。",
+        );
+        return;
+      }
       for (const item of pending) {
         if (controller.signal.aborted) break;
+        setMetadataTask(
+          `正在补全 ${checked + 1}/${pending.length} · ${item.title}`,
+        );
         if ([...item.title.trim()].length < 3) {
           checked++;
           continue;
@@ -553,21 +605,27 @@ export default function GalgameApp() {
           matched++;
         }
         checked++;
-        setToast(
+        setMetadataTask(
           `正在补全资料 ${checked}/${pending.length} · 已匹配 ${matched} 部`,
         );
       }
-      setToast(
+      setMetadataTask(
         `${controller.signal.aborted ? "已停止补全" : "资料补全结束"}，已匹配 ${matched} 部；未匹配作品可进入详情手动选择。`,
       );
     } catch (cause) {
-      if (!controller.signal.aborted)
-        setToast(
+      if (controller.signal.aborted)
+        setMetadataTask(`已停止补全，已保存 ${matched} 部。`);
+      else {
+        setMetadataTaskError(true);
+        setMetadataTask(
           (cause instanceof Error ? cause.message : String(cause)) +
             ` 已保存 ${matched} 部。`,
         );
+      }
     } finally {
       setMetadataBatch(false);
+      if (metadataBatchController.current === controller)
+        metadataBatchController.current = null;
     }
   }
 
@@ -581,9 +639,10 @@ export default function GalgameApp() {
     setNoticeReady(true);
   }
   function adjustAppearance(patch: Partial<Appearance>) {
-    const next = { ...appearance, ...patch };
+    const next = { ...appearanceRef.current, ...patch };
     try {
       saveAppearance(next);
+      appearanceRef.current = next;
       setAppearance(next);
       if (patch.wallpaper === "") void clearPreviewWallpaper().catch(() => {});
     } catch {
@@ -591,6 +650,7 @@ export default function GalgameApp() {
     }
   }
   async function openGame(item: LibraryGame) {
+    if (detailId === null) lastLibraryPath.current = pathname;
     try {
       const updated = await updateGame(
         item.id,
@@ -625,11 +685,17 @@ export default function GalgameApp() {
       return;
     }
     if (item.source === "steam" && item.steamAppId) {
+      if (steamPending.current.has(item.id)) return;
+      steamPending.current.add(item.id);
+      setSteamLaunching([...steamPending.current]);
       try {
         await launchSteamGame(item.steamAppId);
         setToast("已向 Steam 发送启动请求。");
       } catch (cause) {
         setToast(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        steamPending.current.delete(item.id);
+        setSteamLaunching([...steamPending.current]);
       }
     } else await launcher.launch(item);
   }
@@ -688,6 +754,7 @@ export default function GalgameApp() {
     }
     if (busy) return;
     setBusy(true);
+    setScanKind("automatic");
     setScanPath("");
     try {
       const report = await discoverInstalledGames();
@@ -732,6 +799,8 @@ export default function GalgameApp() {
       });
       if (typeof path !== "string") return;
       setBusy(true);
+      setScanKind("folder");
+      setScanPath(path);
       const { scanDirectory } = await import("@/features/scan/types");
       const result = await scanDirectory(path, 8);
       const items: DiscoveredGame[] = result
@@ -804,6 +873,7 @@ export default function GalgameApp() {
             item.title,
             item.originalTitle || "",
             item.sourceTitle || "",
+            item.developer || "",
             ...item.tags,
           ].some((name) => normalizeGameTitle(name).includes(normalizedQuery))),
     )
@@ -818,26 +888,25 @@ export default function GalgameApp() {
               )
             : b.createdAt.localeCompare(a.createdAt),
     );
-  const heading =
-    route === "favorites"
-      ? "把喜欢，留在这里"
-      : route === "recent"
-        ? "接着上次的故事"
-        : route === "completed"
-          ? "那些走完的旅程"
-          : "收藏每一场心动";
   const iconProps = { size: 20, weight: "regular" as const };
   const style = {
     "--gg-alpha": appearance.opacity / 100,
     "--gg-blur": appearance.blur + "px",
+    "--gg-wallpaper-opacity": appearance.wallpaperOpacity / 100,
+    "--gg-content-alpha": appearance.contentOpacity / 100,
     "--gg-wallpaper":
       'url("' + (appearance.wallpaper || BRAND.wallpaper) + '")',
   } as CSSProperties;
 
   return (
-    <div className="gg-app" data-palette={appearance.palette} style={style}>
+    <div
+      className="gg-app"
+      data-palette={appearance.palette}
+      data-reduce-motion={appearance.reduceMotion}
+      style={style}
+    >
       <div className="gg-wallpaper" aria-hidden="true" />
-      {appearance.particles && (
+      {appearance.particles && !appearance.reduceMotion && (
         <div className="gg-particles" aria-hidden="true">
           {Array.from({ length: 10 }, (_, i) => (
             <SparkleIcon
@@ -861,111 +930,104 @@ export default function GalgameApp() {
           aria-label={BRAND.name + " 游戏库"}
         >
           <span className="gg-brand-icon">
-            <img src={BRAND.icon} alt="" width={50} height={50} />
+            <img src={BRAND.icon} alt="" width={46} height={46} />
           </span>
           <span>
             <strong>{BRAND.name}</strong>
+            <small>你的故事收藏馆</small>
           </span>
         </NavLink>
-        <div className="gg-nav-caption">
-          我的空间<span>MY SPACE</span>
-        </div>
+        <div className="gg-nav-caption">我的收藏</div>
         <nav className="gg-navigation" aria-label="主导航">
           <NavLink
             to="/library"
+            end
             aria-label="游戏库"
             className={route === "library" ? "active" : ""}
           >
             <BooksIcon {...iconProps} />
-            <span>游戏库</span>
-            <small>{games.length.toString().padStart(2, "0")}</small>
+            <span>全部游戏</span>
+            <small>{games.length}</small>
           </NavLink>
-        </nav>
-        <div className="gg-nav-caption gg-collection-caption">
-          故事收藏<span>COLLECTION</span>
-        </div>
-        <nav className="gg-navigation" aria-label="收藏分类">
-          <NavLink to="/favorites" aria-label="心动收藏">
+          <NavLink
+            to="/favorites"
+            aria-label="心动收藏"
+            className={route === "favorites" ? "active" : ""}
+          >
             <HeartIcon {...iconProps} />
             <span>心动收藏</span>
-            {favorites.length > 0 && <small>{favorites.length}</small>}
+            <small>{favorites.length}</small>
           </NavLink>
-          <NavLink to="/recent" aria-label="最近游玩">
+          <NavLink
+            to="/recent"
+            aria-label="最近游玩"
+            className={route === "recent" ? "active" : ""}
+          >
             <ClockCounterClockwiseIcon {...iconProps} />
             <span>最近游玩</span>
           </NavLink>
-          <NavLink to="/completed" aria-label="已通关">
+          <NavLink
+            to="/completed"
+            aria-label="已通关"
+            className={route === "completed" ? "active" : ""}
+          >
             <CheckCircleIcon {...iconProps} />
             <span>已通关</span>
+            <small>
+              {games.filter((item) => item.status === "completed").length}
+            </small>
           </NavLink>
         </nav>
         <div className="gg-sidebar-spacer" />
-        <div className="gg-download-links" aria-label="下载资源">
-          <ExternalLink
-            className="gg-source-card gg-download-card"
-            href="https://www.touchgal.ink/"
-            label="TouchGal下载"
-          >
-            <span className="gg-source-icon">
-              <GameControllerIcon size={20} />
-            </span>
-            <span>
-              <strong>TouchGal下载</strong>
-              <small>前往 TouchGal</small>
-            </span>
-            <ArrowUpRightIcon size={14} />
-          </ExternalLink>
-          <ExternalLink
-            className="gg-source-card gg-download-card"
-            href="https://inarigal.com/"
-            label="InariGAL下载"
-          >
-            <span className="gg-source-icon">
-              <GameControllerIcon size={20} />
-            </span>
-            <span>
-              <strong>InariGAL下载</strong>
-              <small>前往 InariGAL</small>
-            </span>
-            <ArrowUpRightIcon size={14} />
-          </ExternalLink>
-          <ExternalLink
-            className="gg-source-card gg-download-card"
-            href="https://www.moyu.moe/"
-            label="补丁下载 · Moyu Moe"
-          >
-            <span className="gg-source-icon">
-              <DownloadSimpleIcon size={20} />
-            </span>
-            <span>
-              <strong>补丁下载</strong>
-              <small>前往 Moyu Moe</small>
-            </span>
-            <ArrowUpRightIcon size={14} />
-          </ExternalLink>
-        </div>
-        <div className="gg-sidebar-bottom">
+        <details className="gg-sidebar-resources">
+          <summary>
+            <DownloadSimpleIcon size={18} />
+            <span>探索与资源</span>
+            <CaretDownIcon size={13} />
+          </summary>
+          <div className="gg-resource-shortcuts">
+            <ExternalLink href="https://www.touchgal.ink/" label="TouchGal下载">
+              <span>TouchGal</span>
+              <ArrowUpRightIcon size={14} />
+            </ExternalLink>
+            <ExternalLink href="https://inarigal.com/" label="InariGAL下载">
+              <span>InariGAL</span>
+              <ArrowUpRightIcon size={14} />
+            </ExternalLink>
+            <ExternalLink
+              href="https://www.moyu.moe/"
+              label="补丁下载 · Moyu Moe"
+            >
+              <span>补丁下载</span>
+              <ArrowUpRightIcon size={14} />
+            </ExternalLink>
+          </div>
+        </details>
+        <div className="gg-sidebar-settings">
+          <button onClick={() => setModal("appearance")}>
+            <PaletteIcon size={19} />
+            <span>外观与玻璃</span>
+            <span className="gg-palette-dot" />
+          </button>
+          <button onClick={() => setModal("source")}>
+            <SlidersHorizontalIcon size={19} />
+            <span>资料设置</span>
+          </button>
           <button
             className="gg-utility-toggle"
             aria-expanded={utilitiesExpanded}
             aria-controls="gg-utility-menu"
             onClick={() => setUtilitiesExpanded((value) => !value)}
           >
-            {utilitiesExpanded ? "收起" : "展开"}
-          </button>
-          <button
-            className="gg-about-button"
-            aria-label="关于项目"
-            title="关于项目"
-            onClick={() => setModal("about")}
-          >
-            <InfoIcon size={20} />
+            <DotsThreeIcon size={20} />
+            <span>更多</span>
+            <CaretDownIcon size={13} />
           </button>
         </div>
         <div
           id="gg-utility-menu"
           className="gg-utility-menu"
-          aria-label="快捷操作"
+          aria-label="更多操作"
           hidden={!utilitiesExpanded}
         >
           <button
@@ -987,7 +1049,7 @@ export default function GalgameApp() {
           >
             {updateCheckStatus === "checking" ? "正在检查更新…" : "检查更新"}
           </button>
-          {latestRelease && updateCheckStatus === "available" ? (
+          {latestRelease && updateCheckStatus === "available" && (
             <ExternalLink
               className="gg-utility-item"
               href={latestRelease.url}
@@ -996,22 +1058,22 @@ export default function GalgameApp() {
             >
               发现新版本 v{latestRelease.version}
             </ExternalLink>
-          ) : null}
-          {updateCheckStatus === "current" ? (
+          )}
+          {updateCheckStatus === "current" && (
             <span className="gg-utility-status" role="status">
               当前已是最新版本
             </span>
-          ) : null}
-          {updateCheckStatus === "no-release" ? (
-            <span className="gg-utility-status" role="status">
-              暂无正式发布版本
-            </span>
-          ) : null}
-          {updateCheckStatus === "error" ? (
+          )}
+          {updateCheckStatus === "error" && (
             <span className="gg-utility-status" role="status">
               检查失败，可重试
             </span>
-          ) : null}
+          )}
+          {updateCheckStatus === "no-release" && (
+            <span className="gg-utility-status" role="status">
+              暂无正式发布版本
+            </span>
+          )}
           <ExternalLink
             className="gg-utility-item"
             href={CONTACT_URL}
@@ -1020,24 +1082,6 @@ export default function GalgameApp() {
           >
             反馈与联系
           </ExternalLink>
-          <button
-            className="gg-utility-item"
-            onClick={() => {
-              setUtilitiesExpanded(false);
-              setModal("source");
-            }}
-          >
-            资料设置
-          </button>
-          <button
-            className="gg-utility-item"
-            onClick={() => {
-              setUtilitiesExpanded(false);
-              setModal("appearance");
-            }}
-          >
-            外观设置
-          </button>
           <ExternalLink
             className="gg-utility-item"
             href={REPOSITORY_URL}
@@ -1047,16 +1091,25 @@ export default function GalgameApp() {
             GitHub 源码
           </ExternalLink>
         </div>
-        <div className="gg-version">
-          <span>v{BRAND.version}</span>
+        <div className="gg-sidebar-foot">
+          <span>
+            StarryGal <small>v{BRAND.version}</small>
+          </span>
+          <button
+            className="gg-about-button"
+            aria-label="关于项目"
+            title="关于项目"
+            onClick={() => setModal("about")}
+          >
+            <InfoIcon size={18} />
+          </button>
         </div>
       </aside>
 
       <div className="gg-workspace">
         <header className="gg-topbar" data-tauri-drag-region>
           <div className="gg-breadcrumb" data-tauri-drag-region>
-            <span data-tauri-drag-region>我的空间</span>
-            <span data-tauri-drag-region>/</span>
+            <BooksIcon size={17} />
             <strong data-tauri-drag-region>
               {game
                 ? game.title
@@ -1069,45 +1122,120 @@ export default function GalgameApp() {
                       : "游戏库"}
             </strong>
           </div>
+          <label className="gg-command-search">
+            <MagnifyingGlassIcon size={18} />
+            <input
+              ref={searchInput}
+              aria-label="搜索游戏"
+              placeholder="搜索游戏、会社或标签…"
+              value={query}
+              onChange={(event) => {
+                if (detailId !== null) navigate(lastLibraryPath.current);
+                setQuery(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setQuery("");
+                  event.currentTarget.blur();
+                }
+              }}
+            />
+            {query ? (
+              <button
+                aria-label="清空搜索"
+                onClick={() => {
+                  setQuery("");
+                  searchInput.current?.focus();
+                }}
+              >
+                <XIcon size={15} />
+              </button>
+            ) : (
+              <kbd>Ctrl K</kbd>
+            )}
+          </label>
           <div className="gg-topbar-actions">
             <span className="gg-local-badge">
               <span />
               本地游戏库
             </span>
-            {latestRelease && updateCheckStatus === "available" ? (
+            {latestRelease && updateCheckStatus === "available" && (
               <ExternalLink
                 className="gg-update-badge"
                 href={latestRelease.url}
                 label={`查看新版本 v${latestRelease.version}`}
               >
-                发现更新 v{latestRelease.version}
+                发现更新
                 <ArrowUpRightIcon size={14} />
               </ExternalLink>
-            ) : null}
+            )}
             {desktop && <WindowControls onError={setToast} />}
           </div>
         </header>
         <main
           ref={main}
+          onScroll={(event) => {
+            if (detailId === null)
+              libraryScroll.current[route] = event.currentTarget.scrollTop;
+          }}
           className={"gg-main" + (detailId === null ? " gg-library-page" : "")}
         >
           {busy && (
             <div className="gg-scan-progress gg-glass" role="status">
               <ArrowClockwiseIcon size={18} />
               <span>
-                正在发现本地故事
+                {scanKind === "automatic"
+                  ? "正在发现本地故事"
+                  : "正在扫描游戏文件夹"}
                 <small title={scanPath}>
                   {scanPath || "正在读取游戏目录…"}
                 </small>
               </span>
-              {desktop && (
+              {desktop && scanKind === "automatic" && (
                 <button
                   className="gg-text-button"
-                  onClick={() => void cancelDiscovery()}
+                  onClick={() =>
+                    void cancelDiscovery().catch(() =>
+                      setToast("取消扫描未能完成，请重试。"),
+                    )
+                  }
                 >
                   取消扫描
                 </button>
               )}
+            </div>
+          )}
+          {metadataTask && detailId === null && (
+            <div
+              className={`gg-task-banner gg-glass ${metadataTaskError ? "is-error" : ""}`}
+              role={metadataTaskError ? "alert" : "status"}
+            >
+              {metadataBatch ? (
+                <ArrowClockwiseIcon size={18} className="gg-spin" />
+              ) : metadataTaskError ? (
+                <InfoIcon size={18} />
+              ) : (
+                <CheckCircleIcon size={18} />
+              )}
+              <span>{metadataTask}</span>
+              {metadataTaskError && !metadataBatch && (
+                <button
+                  className="gg-text-button"
+                  onClick={() => void completeLibraryMetadata()}
+                >
+                  重试
+                </button>
+              )}
+              <button
+                className="gg-text-button"
+                onClick={() =>
+                  metadataBatch
+                    ? metadataBatchController.current?.abort()
+                    : setMetadataTask("")
+                }
+              >
+                {metadataBatch ? "停止补全" : "收起"}
+              </button>
             </div>
           )}
           {detailId !== null ? (
@@ -1115,7 +1243,7 @@ export default function GalgameApp() {
               <GamePage
                 key={game.id}
                 game={game}
-                back={() => navigate("/library")}
+                back={() => navigate(lastLibraryPath.current)}
                 favorite={() => void toggleFavorite(game)}
                 complete={(value) => void setComplete(game, value)}
                 rename={async (title) => {
@@ -1136,6 +1264,7 @@ export default function GalgameApp() {
                     await clearPreviewCover(game.id).catch(() => {});
                 }}
                 launch={() => void startGame(game)}
+                launchPending={steamLaunching.includes(game.id)}
                 remove={() => setRemoveId(game.id)}
                 metadataBusy={metadataBusy}
                 metadataMessage={metadataMessage}
@@ -1184,295 +1313,46 @@ export default function GalgameApp() {
               </div>
             )
           ) : (
-            <>
-              <section className="gg-page-heading">
-                <div>
-                  <div className="gg-eyebrow">
-                    <span />A PLACE FOR YOUR STORIES
-                  </div>
-                  <h1>
-                    {heading}
-                    <span>。</span>
-                  </h1>
-                  <p>把散落在磁盘里的故事，慢慢收进日常。</p>
-                </div>
-                <div className="gg-heading-actions">
-                  <button
-                    className="gg-button gg-secondary"
-                    onClick={() => setModal("source")}
-                  >
-                    <SlidersHorizontalIcon size={18} />
-                    资料设置
-                  </button>
-                  <button
-                    className="gg-button gg-secondary"
-                    disabled={!sourceReady}
-                    onClick={() => void completeLibraryMetadata()}
-                  >
-                    <SparkleIcon size={18} />
-                    {metadataBatch ? "停止补全" : "补全资料"}
-                  </button>
-                  <button
-                    className="gg-button gg-secondary"
-                    onClick={() => void automaticScan()}
-                    disabled={busy}
-                  >
-                    <FolderOpenIcon size={18} />
-                    自动查找
-                  </button>
-                  <button
-                    className="gg-button gg-primary"
-                    onClick={() => setModal("add")}
-                  >
-                    <PlusIcon size={19} weight="bold" />
-                    添加游戏
-                  </button>
-                </div>
-              </section>
-              <div className="gg-content-grid gg-full-library">
-                <section className="gg-library gg-glass" aria-label="游戏库">
-                  <div className="gg-library-heading">
-                    <div>
-                      <BooksIcon size={22} weight="duotone" />
-                      <h2>我的游戏</h2>
-                      <span className="gg-count">{routeGames.length}</span>
-                    </div>
-                    <div
-                      className="gg-view-toggle"
-                      role="group"
-                      aria-label="展示方式"
-                    >
-                      <button
-                        aria-label="封面网格"
-                        aria-pressed={view === "grid"}
-                        className={view === "grid" ? "selected" : ""}
-                        disabled={!libraryPreferencesReady}
-                        onClick={() => {
-                          setView("grid");
-                          saveLibraryPreference("view", "grid");
-                        }}
-                      >
-                        <SquaresFourIcon size={18} />
-                      </button>
-                      <button
-                        aria-label="列表视图"
-                        aria-pressed={view === "list"}
-                        className={view === "list" ? "selected" : ""}
-                        disabled={!libraryPreferencesReady}
-                        onClick={() => {
-                          setView("list");
-                          saveLibraryPreference("view", "list");
-                        }}
-                      >
-                        <ListIcon size={19} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="gg-library-toolbar">
-                    <label className="gg-search">
-                      <MagnifyingGlassIcon size={18} />
-                      <input
-                        aria-label="搜索游戏"
-                        placeholder="寻找一段故事，或一个标签…"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                      />
-                      {query && (
-                        <button
-                          aria-label="清空搜索"
-                          onClick={() => setQuery("")}
-                        >
-                          <XIcon size={15} />
-                        </button>
-                      )}
-                    </label>
-                    <label className="gg-sort">
-                      <SlidersHorizontalIcon size={16} />
-                      <select
-                        aria-label="游戏排序"
-                        value={sort}
-                        disabled={!libraryPreferencesReady}
-                        onChange={(event) => {
-                          setSort(event.target.value as LibrarySort);
-                          saveLibraryPreference("sort", event.target.value);
-                        }}
-                      >
-                        <option value="added">最近添加</option>
-                        <option value="recent">最近打开</option>
-                        <option value="name">名称排序</option>
-                        <option value="time">游玩时长</option>
-                      </select>
-                      <CaretDownIcon size={12} />
-                    </label>
-                  </div>
-                  <div
-                    className="gg-status-tabs"
-                    role="group"
-                    aria-label="游玩状态筛选"
-                  >
-                    {(
-                      [
-                        ["all", "全部"],
-                        ["playing", "游玩中"],
-                        ["unplayed", "待开始"],
-                        ["completed", "已通关"],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <button
-                        key={value}
-                        aria-pressed={filter === value}
-                        className={filter === value ? "selected" : ""}
-                        onClick={() => setFilter(value)}
-                      >
-                        {label}
-                        {value === "all" && <span>{routeGames.length}</span>}
-                      </button>
-                    ))}
-                  </div>
-                  {loadError ? (
-                    <div className="gg-empty">
-                      <CloudSlashIcon size={40} weight="light" />
-                      <h3>{loadError}</h3>
-                      <button
-                        className="gg-button gg-secondary"
-                        onClick={() => void refresh()}
-                      >
-                        <ArrowClockwiseIcon size={17} />
-                        重新读取
-                      </button>
-                    </div>
-                  ) : displayed.length === 0 ? (
-                    <div className="gg-empty">
-                      <div className="gg-empty-icon">
-                        <BooksIcon size={55} weight="duotone" />
-                        <SparkleIcon size={16} weight="duotone" />
-                      </div>
-                      <span className="gg-empty-overline">
-                        YOUR NEXT CHAPTER
-                      </span>
-                      <h3>
-                        {loading
-                          ? "正在整理你的故事…"
-                          : query || filter !== "all"
-                            ? "暂时没有找到这段故事"
-                            : route === "favorites"
-                              ? "为喜欢的故事，留一个位置"
-                              : route === "recent"
-                                ? "下一次相遇，值得期待"
-                                : route === "completed"
-                                  ? "每一个结局，都值得收藏"
-                                  : "第一段故事，从这里开始"}
-                      </h3>
-                      <p>
-                        {query || filter !== "all" ? (
-                          "换个关键词，或看看其他游玩状态。"
-                        ) : route === "favorites" ? (
-                          "点击游戏上的爱心，就能在这里找到它。"
-                        ) : route === "recent" ? (
-                          "打开过的故事，会在这里等你回来。"
-                        ) : route === "completed" ? (
-                          "在游戏详情中，自行标记已通关的作品。"
-                        ) : (
-                          <>
-                            添加一部本地游戏，
-                            <br />
-                            把属于你的世界，放在触手可及的地方。
-                          </>
-                        )}
-                      </p>
-                      {query || filter !== "all" ? (
-                        <button
-                          className="gg-button gg-secondary"
-                          onClick={() => {
-                            setQuery("");
-                            setFilter("all");
-                          }}
-                        >
-                          查看全部游戏
-                          <ArrowRightIcon size={17} />
-                        </button>
-                      ) : (
-                        route === "library" && (
-                          <div className="gg-empty-actions">
-                            <button
-                              className="gg-button gg-primary"
-                              onClick={() => setModal("add")}
-                            >
-                              <PlusIcon size={17} />
-                              添加第一部游戏
-                            </button>
-                            <button
-                              className="gg-button gg-secondary"
-                              onClick={() => void importFolder()}
-                              disabled={busy}
-                            >
-                              <FolderOpenIcon size={18} />
-                              {busy ? "扫描中…" : "扫描文件夹"}
-                            </button>
-                          </div>
-                        )
-                      )}
-                      {route === "library" && !query && filter === "all" && (
-                        <span className="gg-empty-hint">
-                          支持本地游戏与 Steam<span>·</span>游戏文件保留在原处
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      className={
-                        "gg-game-grid " + (view === "list" ? "is-list" : "")
-                      }
-                    >
-                      {displayed.map((item) => (
-                        <article key={item.id} className="gg-game-item">
-                          <button
-                            className="gg-game-select"
-                            onClick={() => void openGame(item)}
-                            aria-label={"查看 " + item.title}
-                          >
-                            <Cover game={item} />
-                            <div className="gg-game-caption">
-                              <h3>{item.title}</h3>
-                              <span>
-                                {GAME_STATUS_LABELS[item.status]}
-                                <i />
-                                {item.source === "steam"
-                                  ? "Steam"
-                                  : formatPlayTime(item.playTimeSeconds)}
-                              </span>
-                            </div>
-                          </button>
-                          <button
-                            className={
-                              "gg-favorite " +
-                              (item.favorite ? "is-favorite" : "")
-                            }
-                            aria-label={
-                              (item.favorite ? "取消收藏 " : "收藏 ") +
-                              item.title
-                            }
-                            onClick={() => void toggleFavorite(item)}
-                          >
-                            <HeartIcon
-                              size={18}
-                              weight={item.favorite ? "fill" : "regular"}
-                            />
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                  <footer className="gg-library-footer">
-                    <span>
-                      <span className="gg-status-dot" />
-                      打开即记为游玩中，通关由你决定。
-                    </span>
-                    <span>{displayed.length} 部作品</span>
-                  </footer>
-                </section>
-              </div>
-            </>
+            <LibraryView
+              games={games}
+              routeGames={routeGames}
+              displayed={displayed}
+              route={route}
+              query={query}
+              filter={filter}
+              view={view}
+              sort={sort}
+              density={density}
+              ready={libraryPreferencesReady}
+              loading={loading}
+              error={loadError}
+              busy={busy}
+              sourceReady={sourceReady}
+              metadataBatch={metadataBatch}
+              steamLaunching={steamLaunching}
+              setFilter={setFilter}
+              setView={(value) => {
+                setView(value);
+                saveLibraryPreference("view", value);
+              }}
+              setSort={(value) => {
+                setSort(value);
+                saveLibraryPreference("sort", value);
+              }}
+              setDensity={(value) => {
+                setDensity(value);
+                saveLibraryPreference("density", value);
+              }}
+              clearSearch={() => setQuery("")}
+              openGame={(item) => void openGame(item)}
+              launch={(item) => void startGame(item)}
+              favorite={(item) => void toggleFavorite(item)}
+              add={() => setModal("add")}
+              scan={() => void automaticScan()}
+              scanFolder={() => void importFolder()}
+              completeMetadata={() => void completeLibraryMetadata()}
+              refresh={() => void refresh()}
+            />
           )}
           <footer className="gg-page-footer">
             <span>

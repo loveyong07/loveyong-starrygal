@@ -6,15 +6,16 @@ export const REPOSITORY_URL =
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
 // Increment only when the announcement itself changes so each notice is shown once.
-export const NOTICE_VERSION = "5";
+export const NOTICE_VERSION = "6";
 // Permanent announcement. Future releases must only edit NOTICE_UPDATES below.
 export const NOTICE_TEXT =
   "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入";
 export const NOTICE_UPDATES = [
-  "搜索结果与游戏详情获取后长期保存在本地，再次打开或重启优先使用本地资料，减少 Token 调用。",
-  "扫描导入后仅补全新游戏；相同查询和预览复用缓存，未找到作品的结果也会保存。",
-  "详情新增“更新资料”，需要时才从网站重新获取；匹配窗口也可主动刷新已保存的搜索结果。",
-  "资料设置可打开本地资料文件夹；请求失败不覆盖已保存内容，自定义封面与手动 PV 继续保留。",
+  "游戏库焕新：顶部搜索支持名称、别名、会社和标签，Ctrl+K / Ctrl+F 可快速聚焦。最近打开区和游戏卡片均可直接启动。",
+  "通透玻璃继续保留：玻璃、背景和正文底色分别支持 0–100% 即时调节并自动保存，旧外观设置继续沿用。新增通透、柔和、阅读预设。",
+  "新增三档封面大小，重启后保留排序与视图；详情返回时恢复原分类、搜索和列表位置。外观与资料设置入口常驻左侧。",
+  "优化点击、启动中与运行中反馈，补齐键盘焦点和减少动态效果；详情下滑后提供紧凑启动条，PV 按需加载并可重新加载。",
+  "添加游戏支持完整路径拖入，资料补全显示进度、停止和重试。已有游戏库、资料缓存、自定义封面、手动 PV 和游玩记录继续保留。",
 ];
 
 export interface GameExtras {
