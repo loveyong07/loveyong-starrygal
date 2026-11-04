@@ -20,11 +20,10 @@ import {
   formatPlayTime,
   type GameStatus,
 } from "@/types/game";
-import type { LibraryGame } from "./model";
+import type { LibraryDensity, LibraryGame } from "./model";
 import GameArtwork from "./GameArtwork";
 import GameLaunchButton from "./GameLaunchButton";
 
-export type LibraryDensity = "compact" | "comfortable" | "large";
 export type LibrarySort = "added" | "recent" | "name" | "time";
 export type LibraryFilter = "all" | GameStatus;
 export type LibraryRoute = "library" | "favorites" | "recent" | "completed";
@@ -294,20 +293,29 @@ export default function LibraryView({
               <CaretDownIcon size={12} />
             </label>
             {view === "grid" && (
-              <label className="gg-density-control">
-                <select
-                  aria-label="封面大小"
-                  value={density}
-                  disabled={!ready}
-                  onChange={(event) =>
-                    setDensity(event.target.value as LibraryDensity)
-                  }
-                >
-                  <option value="compact">小封面</option>
-                  <option value="comfortable">中封面</option>
-                  <option value="large">大封面</option>
-                </select>
-              </label>
+              <div
+                className="gg-density-control"
+                role="group"
+                aria-label="封面大小"
+              >
+                {(
+                  [
+                    ["compact", "小封面"],
+                    ["large", "大封面"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={density === value}
+                    className={density === value ? "selected" : ""}
+                    disabled={!ready}
+                    onClick={() => setDensity(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             )}
             <div className="gg-view-toggle" role="group" aria-label="展示方式">
               <button

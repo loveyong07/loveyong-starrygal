@@ -60,9 +60,11 @@ import {
   REPOSITORY_URL,
   completionPatch,
   normalizedPath,
+  normalizeLibraryDensity,
   noticeNeeded,
   visitPatch,
   type LibraryGame,
+  type LibraryDensity,
 } from "./model";
 import {
   compareVersions,
@@ -98,10 +100,7 @@ import {
   ScanResultsDialog,
 } from "./StudioDialogs";
 import GamePage from "./GamePage";
-import LibraryView, {
-  type LibraryDensity,
-  type LibrarySort,
-} from "./LibraryView";
+import LibraryView, { type LibrarySort } from "./LibraryView";
 import "./galgame.css";
 import "./studio.css";
 
@@ -162,7 +161,7 @@ export default function GalgameApp() {
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<LibrarySort>("added");
-  const [density, setDensity] = useState<LibraryDensity>("comfortable");
+  const [density, setDensity] = useState<LibraryDensity>("compact");
   const searchInput = useRef<HTMLInputElement>(null);
   const libraryScroll = useRef<Record<string, number>>({});
   const lastLibraryPath = useRef("/library");
@@ -310,12 +309,9 @@ export default function GalgameApp() {
         if (["added", "recent", "name", "time"].includes(savedSort || ""))
           setSort(savedSort as LibrarySort);
         if (savedView === "grid" || savedView === "list") setView(savedView);
-        if (
-          savedDensity === "compact" ||
-          savedDensity === "comfortable" ||
-          savedDensity === "large"
-        )
-          setDensity(savedDensity);
+        setDensity(normalizeLibraryDensity(savedDensity));
+        if (savedDensity === "comfortable")
+          saveLibraryPreference("density", "compact");
       })
       .catch(() => {
         if (active) setToast("游戏库显示设置暂时无法读取。");
@@ -1007,7 +1003,6 @@ export default function GalgameApp() {
           <button onClick={() => setModal("appearance")}>
             <PaletteIcon size={19} />
             <span>外观与玻璃</span>
-            <span className="gg-palette-dot" />
           </button>
           <button onClick={() => setModal("source")}>
             <SlidersHorizontalIcon size={19} />

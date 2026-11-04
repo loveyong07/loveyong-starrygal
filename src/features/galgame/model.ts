@@ -6,17 +6,22 @@ export const REPOSITORY_URL =
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
 // Increment only when the announcement itself changes so each notice is shown once.
-export const NOTICE_VERSION = "6";
+export const NOTICE_VERSION = "7";
 // Permanent announcement. Future releases must only edit NOTICE_UPDATES below.
 export const NOTICE_TEXT =
   "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入";
 export const NOTICE_UPDATES = [
-  "游戏库焕新：顶部搜索支持名称、别名、会社和标签，Ctrl+K / Ctrl+F 可快速聚焦。最近打开区和游戏卡片均可直接启动。",
-  "通透玻璃继续保留：玻璃、背景和正文底色分别支持 0–100% 即时调节并自动保存，旧外观设置继续沿用。新增通透、柔和、阅读预设。",
-  "新增三档封面大小，重启后保留排序与视图；详情返回时恢复原分类、搜索和列表位置。外观与资料设置入口常驻左侧。",
-  "优化点击、启动中与运行中反馈，补齐键盘焦点和减少动态效果；详情下滑后提供紧凑启动条，PV 按需加载并可重新加载。",
-  "添加游戏支持完整路径拖入，资料补全显示进度、停止和重试。已有游戏库、资料缓存、自定义封面、手动 PV 和游玩记录继续保留。",
+  "封面大小简化为小、大两档，移除与小封面显示接近的中封面；改为直接点选，当前大小一眼可见，重启后继续保留。旧中封面设置自动转为小封面。",
+  "网格中的游戏名称最多显示两行，长标题更容易辨认；卡片操作保持对齐，列表视图继续使用紧凑单行标题。",
+  "优化游戏库工具栏排版，较窄的桌面窗口中控件可自动换行；移除“外观与玻璃”右侧的装饰圆点。现有玻璃外观、游戏库、资料缓存、自定义封面、手动 PV 和游玩记录继续保留。",
 ];
+
+export type LibraryDensity = "compact" | "large";
+
+/** Retired medium covers and missing preferences use the small-cover layout. */
+export function normalizeLibraryDensity(value: unknown): LibraryDensity {
+  return value === "large" ? "large" : "compact";
+}
 
 export interface GameExtras {
   tags: string[];

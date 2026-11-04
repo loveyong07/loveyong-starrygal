@@ -16,6 +16,7 @@ import {
   REPOSITORY_URL,
   installFolder,
   selectedExecutable,
+  normalizeLibraryDensity,
 } from "../src/features/galgame/model.ts";
 
 const base = {
@@ -24,6 +25,14 @@ const base = {
   lastPlayedAt: null,
   visitedAt: null,
 };
+
+test("retired medium covers migrate to small while existing large covers stay large", () => {
+  assert.equal(normalizeLibraryDensity("comfortable"), "compact");
+  assert.equal(normalizeLibraryDensity("compact"), "compact");
+  assert.equal(normalizeLibraryDensity("large"), "large");
+  for (const value of [null, undefined, "unknown", {}, 1])
+    assert.equal(normalizeLibraryDensity(value), "compact");
+});
 
 test("new games stay pending, entering details starts them, completion is preserved", () => {
   assert.equal(statusOf(base), "unplayed");
