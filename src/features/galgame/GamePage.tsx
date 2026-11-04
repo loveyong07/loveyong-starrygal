@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeftIcon,
-  ArrowUpRightIcon,
   CheckCircleIcon,
   CheckIcon,
   ClockCounterClockwiseIcon,
@@ -32,6 +31,7 @@ import type { TouchGalClient } from "./touchgal";
 import { parseTouchGalIntroduction } from "./touchgal-introduction";
 import { desktop, savePreviewCover } from "./library";
 import { Modal } from "./StudioDialogs";
+import GameLaunchButton from "./GameLaunchButton";
 
 function LinkedParagraph({ text }: { text: string }) {
   const nodes: ReactNode[] = [];
@@ -84,6 +84,7 @@ export default function GamePage({
   rename,
   saveCover,
   launch,
+  launchPending,
   remove,
   metadataBusy,
   metadataMessage,
@@ -100,6 +101,7 @@ export default function GamePage({
   rename: (title: string) => Promise<void>;
   saveCover: (coverPath: string | null) => Promise<void>;
   launch: () => void;
+  launchPending: boolean;
   remove: () => void;
   metadataBusy: boolean;
   metadataMessage: string;
@@ -137,6 +139,24 @@ export default function GamePage({
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoNotice, setVideoNotice] = useState("");
   const [videoFailed, setVideoFailed] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoRetry, setVideoRetry] = useState(0);
+  const hero = useRef<HTMLElement>(null);
+  const [compactLaunch, setCompactLaunch] = useState(false);
+  useEffect(() => {
+    const target = hero.current;
+    if (!target) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setCompactLaunch(!entry.isIntersecting),
+      {
+        root: target.closest(".gg-main"),
+        rootMargin: "-46px 0px 0px 0px",
+        threshold: 0,
+      },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [game.id]);
   const videoIsPage = videoUrl
     ? /(^|\.)(bilibili\.com|b23\.tv|youtube\.com|youtu\.be|vimeo\.com)$/.test(
         new URL(videoUrl).hostname,
@@ -145,6 +165,8 @@ export default function GamePage({
   useEffect(() => {
     setVideoDraft(videoUrl || "");
     setVideoFailed(false);
+    setVideoLoading(false);
+    setVideoRetry(0);
   }, [videoUrl]);
   const coverInput = useRef<HTMLInputElement>(null);
   const src = coverSrc(game.customCoverPath || game.coverPath);
@@ -223,11 +245,26 @@ export default function GamePage({
 
   return (
     <div className="gg-game-page">
-      <button className="gg-back-button" onClick={back}>
-        <ArrowLeftIcon size={18} />
-        返回游戏库
-      </button>
-      <section className="gg-game-hero gg-glass">
+      <div
+        className={`gg-game-navigation ${compactLaunch ? "has-compact" : ""}`}
+      >
+        <button className="gg-back-button" onClick={back}>
+          <ArrowLeftIcon size={18} />
+          返回游戏库
+        </button>
+        {compactLaunch && (
+          <>
+            <strong>{game.title}</strong>
+            <GameLaunchButton
+              game={game}
+              launch={launch}
+              pending={launchPending}
+              compact
+            />
+          </>
+        )}
+      </div>
+      <section ref={hero} className="gg-game-hero gg-glass">
         <div className="gg-detail-poster">
           {hasCover ? (
             <button
@@ -345,25 +382,12 @@ export default function GamePage({
             <span>慢慢进入故事，按自己的节奏。</span>
           </div>
           <div className="gg-hero-actions">
-            <button
-              className="gg-button gg-primary gg-hero-play"
-              onClick={launch}
-            >
-              <PlayIcon size={19} weight="fill" />
-              开始游戏
-              <ArrowUpRightIcon size={17} />
-            </button>
-            <button
-              className="gg-button gg-secondary"
-              onClick={() => {
-                setExeDraft(game.exePath || "");
-                setExeError("");
-                setChoosingExecutable(true);
-              }}
-            >
-              <FolderOpenIcon size={18} />
-              选择启动 EXE
-            </button>
+            <GameLaunchButton
+              game={game}
+              launch={launch}
+              pending={launchPending}
+              className="gg-hero-play"
+            />
             <button
               className={
                 "gg-button gg-secondary " + (game.favorite ? "is-favorite" : "")
@@ -392,12 +416,26 @@ export default function GamePage({
               {status === "completed" ? "已通关" : "标记为已通关"}
             </button>
           </div>
-          <p className="gg-launch-target" title={game.exePath || undefined}>
-            启动程序：
-            {game.source === "steam"
-              ? "由 Steam 启动"
-              : game.exePath?.split(/[\\/]/).pop() || "尚未选择 EXE"}
-          </p>
+          <div className="gg-executable-row">
+            <p className="gg-launch-target" title={game.exePath || undefined}>
+              启动程序：
+              {game.source === "steam"
+                ? "由 Steam 启动"
+                : game.exePath?.split(/[\\/]/).pop() || "尚未选择 EXE"}
+            </p>
+            <button
+              className="gg-text-button"
+              aria-label="选择启动 EXE"
+              onClick={() => {
+                setExeDraft(game.exePath || "");
+                setExeError("");
+                setChoosingExecutable(true);
+              }}
+            >
+              <FolderOpenIcon size={13} />
+              更换启动程序
+            </button>
+          </div>
         </div>
       </section>
       <div className="gg-game-information">
@@ -496,28 +534,62 @@ export default function GamePage({
             </h2>
           </header>
           {videoUrl && !videoIsPage && !videoFailed ? (
-            <video
-              key={videoUrl}
-              src={videoUrl}
-              controls
-              preload="metadata"
-              aria-label={game.title + "宣传影片"}
-              onError={() => {
-                setVideoFailed(true);
-                setVideoNotice(
-                  "此链接无法直接播放，可在浏览器中查看或更换链接。",
-                );
-              }}
-            />
+            <div className="gg-video-player">
+              <video
+                key={videoUrl + videoRetry}
+                src={videoUrl}
+                controls
+                preload="none"
+                poster={screenshots[0] || (hasCover ? src : undefined)}
+                aria-label={game.title + "宣传影片"}
+                onPlay={() => setVideoLoading(true)}
+                onWaiting={() => setVideoLoading(true)}
+                onCanPlay={() => setVideoLoading(false)}
+                onPlaying={() => setVideoLoading(false)}
+                onPause={() => setVideoLoading(false)}
+                onError={() => {
+                  setVideoLoading(false);
+                  setVideoFailed(true);
+                  setVideoNotice(
+                    "此链接无法直接播放，可在浏览器中查看或更换链接。",
+                  );
+                }}
+              />
+              {videoLoading && (
+                <div className="gg-video-loading" role="status">
+                  正在加载影片…
+                </div>
+              )}
+            </div>
           ) : (
             <div className="gg-film-blank">
               <PlayIcon size={36} weight="light" />
-              <span>{videoIsPage ? "宣传影片已关联" : "暂无宣传影片"}</span>
+              <span>
+                {videoFailed
+                  ? "影片暂时无法播放"
+                  : videoIsPage
+                    ? "宣传影片已关联"
+                    : "暂无宣传影片"}
+              </span>
               <small>
-                {videoIsPage
-                  ? "点击下方链接前往视频页面播放"
-                  : "添加官方 PV / OP 链接，收藏故事的声音与画面"}
+                {videoFailed
+                  ? "可重新加载，或在浏览器中播放。"
+                  : videoIsPage
+                    ? "点击下方链接前往视频页面播放"
+                    : "添加官方 PV / OP 链接，收藏故事的声音与画面"}
               </small>
+              {videoFailed && (
+                <button
+                  className="gg-button gg-secondary"
+                  onClick={() => {
+                    setVideoFailed(false);
+                    setVideoRetry((value) => value + 1);
+                    setVideoNotice("");
+                  }}
+                >
+                  重新加载
+                </button>
+              )}
             </div>
           )}
           {videoUrl && (
@@ -525,66 +597,69 @@ export default function GamePage({
               <ResourceLink href={videoUrl}>在浏览器中播放</ResourceLink>
             </div>
           )}
-          <form
-            className="gg-video-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const url = videoDraft.trim() ? mediaUrl(videoDraft) : null;
-              if (
-                videoDraft.trim() &&
-                (!url ||
-                  new URL(url).protocol !== "https:" ||
-                  new URL(url).username ||
-                  new URL(url).password)
-              ) {
-                setVideoNotice("请填写有效且不含账号密码的 HTTPS 视频链接。");
-                return;
-              }
-              setVideoBusy(true);
-              setVideoNotice("");
-              void saveVideo(url)
-                .then(() => {
-                  setVideoFailed(false);
-                  setVideoNotice(
-                    url ? "宣传影片链接已保存。" : "宣传影片链接已移除。",
-                  );
-                })
-                .catch(() => setVideoNotice("链接保存失败，请重试。"))
-                .finally(() => setVideoBusy(false));
-            }}
-          >
-            <label className="gg-field">
-              PV / OP 链接
-              <input
-                type="url"
-                value={videoDraft}
-                placeholder="https://…（MP4 / WebM 或视频页面）"
-                onChange={(event) => setVideoDraft(event.target.value)}
-              />
-            </label>
-            <button className="gg-button gg-secondary" disabled={videoBusy}>
-              保存影片链接
-            </button>
-          </form>
-          {videoNotice && (
-            <p className="gg-field-note" role="status">
-              {videoNotice}
-            </p>
-          )}
-          <p className="gg-field-note">
-            自动识别条目简介中的 PV /
-            OP，也可手动添加或修改。清空链接并保存可隐藏影片。
-          </p>
-          <div className="gg-source-credit">
-            <ResourceLink
-              href={
-                "https://search.bilibili.com/all?keyword=" +
-                encodeURIComponent(game.title + " 官方 PV OP")
-              }
+          <details className="gg-video-edit" open={!videoUrl}>
+            <summary>管理宣传影片链接</summary>
+            <form
+              className="gg-video-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const url = videoDraft.trim() ? mediaUrl(videoDraft) : null;
+                if (
+                  videoDraft.trim() &&
+                  (!url ||
+                    new URL(url).protocol !== "https:" ||
+                    new URL(url).username ||
+                    new URL(url).password)
+                ) {
+                  setVideoNotice("请填写有效且不含账号密码的 HTTPS 视频链接。");
+                  return;
+                }
+                setVideoBusy(true);
+                setVideoNotice("");
+                void saveVideo(url)
+                  .then(() => {
+                    setVideoFailed(false);
+                    setVideoNotice(
+                      url ? "宣传影片链接已保存。" : "宣传影片链接已移除。",
+                    );
+                  })
+                  .catch(() => setVideoNotice("链接保存失败，请重试。"))
+                  .finally(() => setVideoBusy(false));
+              }}
             >
-              查找宣传影片
-            </ResourceLink>
-          </div>
+              <label className="gg-field">
+                PV / OP 链接
+                <input
+                  type="url"
+                  value={videoDraft}
+                  placeholder="https://…（MP4 / WebM 或视频页面）"
+                  onChange={(event) => setVideoDraft(event.target.value)}
+                />
+              </label>
+              <button className="gg-button gg-secondary" disabled={videoBusy}>
+                保存影片链接
+              </button>
+            </form>
+            {videoNotice && (
+              <p className="gg-field-note" role="status">
+                {videoNotice}
+              </p>
+            )}
+            <p className="gg-field-note">
+              自动识别条目简介中的 PV /
+              OP，也可手动添加或修改。清空链接并保存可隐藏影片。
+            </p>
+            <div className="gg-source-credit">
+              <ResourceLink
+                href={
+                  "https://search.bilibili.com/all?keyword=" +
+                  encodeURIComponent(game.title + " 官方 PV OP")
+                }
+              >
+                查找宣传影片
+              </ResourceLink>
+            </div>
+          </details>
           <div className="gg-game-path">
             <span>游戏位置</span>
             <p title={game.installPath}>{game.installPath}</p>
