@@ -25,6 +25,7 @@
   <a href="#快速上手">快速上手</a> ·
   <a href="#使用提示与常见问题">常见问题</a> ·
   <a href="#开发运行">开发运行</a> ·
+  <a href="#投喂">投喂</a> ·
   <a href="https://loveyong07.top/contact">反馈与联系</a>
 </p>
 
@@ -64,6 +65,7 @@
 - [技术栈与源码结构](#技术栈与源码结构)
 - [开发运行与测试](#开发运行)
 - [致谢与许可](#致谢与许可)
+- [投喂](#投喂)
 
 ---
 
@@ -364,6 +366,32 @@ StarryGal 标志由使用者原创提供，应用图标采用人物抱星图案�
 
 - 本项目源码采用 **GPL-3.0-only** 协议开放，不附带任何担保；修改与再分发时请保留许可证、来源与原作者署名，详见 [LICENSE](LICENSE)。
 - **Locale Emulator**、**Magpie**、**LunaTranslator** 和 **7-Zip** 均在 `src-tauri/resources/` 中完整保留各自的 `COPYING`、`LICENSE`、`NOTICE` 与必要的对应源码，用于构建与合规分发，分发时应与相关代码一同保留。
+
+---
+
+## 投喂
+
+### WeChat Pay
+
+<img src="./.github/assets/tip-wechat-qr.webp" alt="WeChat Pay 收款二维码" width="220" />
+
+### Alipay
+
+<img src="./.github/assets/tip-alipay-qr.webp" alt="Alipay 收款二维码" width="220" />
+
+### BNB USDT
+
+<img src="./.github/assets/tip-bnb-usdt-qr.webp" alt="BNB USDT 收款二维码" width="220" />
+
+- 主网：`BNB Smart Chain (BEP20)`
+- 钱包地址：`0xec3b3026faa3091baa812ae2793ee2c3a955959a`
+
+### BNB USDC
+
+<img src="./.github/assets/tip-bnb-usdc-qr.webp" alt="BNB USDC 收款二维码" width="220" />
+
+- 主网：`BNB Smart Chain (BEP20)`
+- 钱包地址：`0xec3b3026faa3091baa812ae2793ee2c3a955959a`
 
 ---
 
