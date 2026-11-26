@@ -6,6 +6,12 @@ on:
     paths: [package.json]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: "Run full cloud build and upgrade verification even if release already exists"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -15,7 +21,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check whether release already exists
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json','utf8')).version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "${{ inputs.force_build }}" == "true" ]]; then
+            echo "force_build=true; running full cloud build and verification."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          check_release() {
+            gh api "repos/${{ github.repository }}/releases?per_page=30" \
+              --jq ".[] | select(.tag_name == \"v$version\") | .tag_name"
+          }
+          existing=$(check_release)
+          if [[ -z "$existing" && "${{ github.event_name }}" == "push" ]]; then
+            sleep 8
+            existing=$(check_release)
+          fi
+          if [[ -n "$existing" ]]; then
+            echo "Release v$version already exists (published locally); skipping cloud build."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Release v$version does not exist yet; proceeding with cloud build."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
   windows:
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -84,6 +129,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = '${{ steps.downloads.outputs.version }}'
+          $existing = gh api "repos/${{ github.repository }}/releases?per_page=30" --jq ".[] | select(.tag_name == `"v$version`") | .tag_name"
+          if ($existing) {
+            Write-Output "Release v$version already exists; keeping existing release intact."
+            exit 0
+          }
           gh release create "v$version" --draft --target '${{ github.sha }}' --title "StarryGal v$version" --notes-file RELEASE.md
           if ($LASTEXITCODE -ne 0) { throw 'Release creation failed; existing releases will not be overwritten automatically' }
           gh release upload "v$version" release-assets/*

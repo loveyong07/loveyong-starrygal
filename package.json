@@ -23,6 +23,8 @@
     "test:logs": "node --test tests/log-model.test.mjs tests/logging-runtime.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
+    "release:local": "node scripts/publish-local-release.mjs",
+    "release:upload": "node scripts/publish-local-release.mjs --skip-build",
     "format": "prettier --write src/features/galgame tests/opengal-*.test.mjs"
   },
   "dependencies": {
