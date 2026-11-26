@@ -10,11 +10,9 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-
-import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import { GameControllerIcon, TrayArrowDownIcon } from "@phosphor-icons/react";
+import { Modal } from "@/features/galgame/StudioDialogs";
 import { settingsGet, settingsSet } from "@/lib/db";
-
 import { CLOSE_BEHAVIOR_KEY, normalizeCloseBehavior } from "./close-behavior";
 
 export function CloseBehaviorDialog() {
@@ -32,15 +30,22 @@ export function CloseBehaviorDialog() {
     void listen("close-requested", () => {
       void (async () => {
         try {
-          const behavior = normalizeCloseBehavior(await settingsGet(CLOSE_BEHAVIOR_KEY));
+          const behavior = normalizeCloseBehavior(
+            await settingsGet(CLOSE_BEHAVIOR_KEY),
+          );
           if (behavior === "tray") {
             await invoke("app_hide_to_tray");
             return;
           }
           if (behavior === "exit") {
-            const count = await invoke<number>('manager_running_count');
+            const count = await invoke<number>("manager_running_count");
             if (count > 0) {
-              if (!cancelled) { setRunningCount(count); setRemember(false); setError(null); setOpen(true); }
+              if (!cancelled) {
+                setRunningCount(count);
+                setRemember(false);
+                setError(null);
+                setOpen(true);
+              }
               return;
             }
             await invoke("app_quit");
@@ -52,7 +57,9 @@ export function CloseBehaviorDialog() {
           console.warn("[window] close behaviour:", cause);
         }
         if (!cancelled) {
-          setRunningCount(await invoke<number>('manager_running_count').catch(() => 0));
+          setRunningCount(
+            await invoke<number>("manager_running_count").catch(() => 0),
+          );
           setRemember(false);
           setError(null);
           setOpen(true);
@@ -65,13 +72,31 @@ export function CloseBehaviorDialog() {
       })
       .catch((cause) => console.warn("[window] close listener:", cause));
 
-    void listen('quit-requested', () => {
-      void invoke<number>('manager_running_count').then(async count => {
-        if (cancelled) return;
-        if (count === 0) { await invoke('app_quit'); return; }
-        setRunningCount(count); setRemember(false); setError(null); setOpen(true);
-      }).catch(cause => { if (!cancelled) { setError(String(cause)); setOpen(true); } });
-    }).then(stop => { if (cancelled) stop(); else quitUnlisten = stop; }).catch(cause => console.warn('[window] quit listener:', cause));
+    void listen("quit-requested", () => {
+      void invoke<number>("manager_running_count")
+        .then(async (count) => {
+          if (cancelled) return;
+          if (count === 0) {
+            await invoke("app_quit");
+            return;
+          }
+          setRunningCount(count);
+          setRemember(false);
+          setError(null);
+          setOpen(true);
+        })
+        .catch((cause) => {
+          if (!cancelled) {
+            setError(String(cause));
+            setOpen(true);
+          }
+        });
+    })
+      .then((stop) => {
+        if (cancelled) stop();
+        else quitUnlisten = stop;
+      })
+      .catch((cause) => console.warn("[window] quit listener:", cause));
 
     return () => {
       cancelled = true;
@@ -99,43 +124,84 @@ export function CloseBehaviorDialog() {
     }
   }
 
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={() => {
+    <Modal
+      title="关闭 StarryGal"
+      subtitle="选择关闭窗口时的行为；勾选「今后不再提示」后会记住本次选择。"
+      close={() => {
         if (!busy) setOpen(false);
       }}
-      title="关闭 StarryGal"
-      description="选择关闭窗口时的行为；勾选「今后不再提示」后会记住本次选择。"
-      className="max-w-md"
-      footer={
-        <>
-          <label className="mr-auto flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+    >
+      <div className="gg-glass-modal-stack">
+        {runningCount > 0 && (
+          <div className="gg-modal-banner is-info">
+            <GameControllerIcon size={17} />
+            <span>
+              还有 {runningCount}{" "}
+              款游戏正在运行。缩小至托盘可以继续计时；结算并退出会保存截至此刻的时长，游戏继续运行，退出后的时间不再记录。
+            </span>
+          </div>
+        )}
+        <div className="gg-close-options">
+          <div className="gg-close-option-item">
+            <strong>缩小至托盘</strong>
+            <p>
+              窗口隐藏，应用继续在系统托盘运行；点击托盘图标或菜单「显示
+              StarryGal」即可恢复。
+            </p>
+          </div>
+          <div className="gg-close-option-item">
+            <strong>直接关闭</strong>
+            <p>
+              退出 StarryGal 进程。托盘菜单里的「退出 StarryGal」也会直接退出。
+            </p>
+          </div>
+        </div>
+        {error && (
+          <p role="alert" className="gg-form-error">
+            {error}
+          </p>
+        )}
+        <div className="gg-dialog-footer gg-close-footer">
+          <label className="gg-check-field gg-close-remember">
             <input
               type="checkbox"
               checked={remember}
               disabled={busy}
               onChange={(event) => setRemember(event.target.checked)}
-              className="h-4 w-4 accent-[hsl(var(--primary))]"
             />
             今后不再提示
           </label>
-          <Button variant="ghost" disabled={busy} onClick={() => setOpen(false)}>取消</Button>
-          <Button variant="outline" disabled={busy} onClick={() => void choose("exit")}>{runningCount ? '结算并退出' : '直接关闭'}</Button>
-          <Button loading={busy} onClick={() => void choose("tray")}>缩小至托盘</Button>
-        </>
-      }
-    >
-      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-        {runningCount > 0 ? <p className="rounded-md border border-primary/40 bg-primary/10 p-3">还有 {runningCount} 款游戏正在运行。缩小至托盘可以继续计时；结算并退出会保存截至此刻的时长，游戏继续运行，退出后的时间不再记录。</p> : null}
-        <p>
-          <span className="font-medium text-foreground">缩小至托盘</span>：窗口隐藏，应用继续在系统托盘运行；点击托盘图标或菜单「显示 StarryGal」即可恢复。
-        </p>
-        <p>
-          <span className="font-medium text-foreground">直接关闭</span>：退出 StarryGal 进程。托盘菜单里的「退出 StarryGal」也会直接退出。
-        </p>
-        {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
+          <button
+            type="button"
+            className="gg-button gg-secondary"
+            disabled={busy}
+            onClick={() => setOpen(false)}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="gg-button gg-secondary"
+            disabled={busy}
+            onClick={() => void choose("exit")}
+          >
+            {runningCount ? "结算并退出" : "直接关闭"}
+          </button>
+          <button
+            type="button"
+            className="gg-button gg-primary"
+            disabled={busy}
+            aria-busy={busy}
+            onClick={() => void choose("tray")}
+          >
+            <TrayArrowDownIcon size={16} />
+            缩小至托盘
+          </button>
+        </div>
       </div>
-    </Dialog>
+    </Modal>
   );
 }

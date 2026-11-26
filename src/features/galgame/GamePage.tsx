@@ -1,37 +1,50 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
+  ArchiveBoxIcon,
   ArrowLeftIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
   CheckCircleIcon,
   CheckIcon,
   ClockCounterClockwiseIcon,
   HeartIcon,
-  FolderOpenIcon,
   ImageSquareIcon,
   PencilSimpleIcon,
   PlayIcon,
+  SlidersHorizontalIcon,
   TagIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { coverSrc } from "@/lib/asset";
-import { formatPlayTime } from "@/types/game";
-import { gameCoverImport } from "@/lib/db";
 import {
+  launchProfileGet,
+  type EffectiveLaunchProfile,
+} from "@/features/launch/profile-api";
+import { coverSrc } from "@/lib/asset";
+import { gameCoverImport } from "@/lib/db";
+import { formatPlayTime, type PlaySession } from "@/types/game";
+import GameLaunchButton from "./GameLaunchButton";
+import { desktop, savePreviewCover } from "./library";
+import type { GameMetadata } from "./metadata";
+import {
+  formatStoryFootprint,
   mediaUrl,
-  selectedExecutable,
   statusOf,
   type LibraryGame,
 } from "./model";
+import {
+  LaunchSettingsModal,
+  SaveBackupModal,
+} from "./StarryFeaturesDialogs";
+import { Modal } from "./StudioDialogs";
+import { formatStoryTags } from "./tag-display";
+import type { TouchGalClient } from "./touchgal";
+import { parseTouchGalIntroduction } from "./touchgal-introduction";
 import {
   ResourceLink,
   TouchGalMatchDialog,
   TouchGalResources,
 } from "./TouchGalDialogs";
-import type { GameMetadata } from "./metadata";
-import type { TouchGalClient } from "./touchgal";
-import { parseTouchGalIntroduction } from "./touchgal-introduction";
-import { desktop, savePreviewCover } from "./library";
-import { Modal } from "./StudioDialogs";
-import GameLaunchButton from "./GameLaunchButton";
 
 function LinkedParagraph({ text }: { text: string }) {
   const nodes: ReactNode[] = [];
@@ -85,13 +98,15 @@ export default function GamePage({
   saveCover,
   launch,
   launchPending,
+  steamRunning = false,
   remove,
   metadataBusy,
   metadataMessage,
   metadataClient,
   applyMetadata,
   saveVideo,
-  saveExecutable,
+  saveLaunch,
+  saveSavePath,
   restoreSteam,
 }: {
   game: LibraryGame;
@@ -102,13 +117,15 @@ export default function GamePage({
   saveCover: (coverPath: string | null) => Promise<void>;
   launch: () => void;
   launchPending: boolean;
+  steamRunning?: boolean;
   remove: () => void;
   metadataBusy: boolean;
   metadataMessage: string;
   metadataClient: TouchGalClient;
   applyMetadata: (result: GameMetadata, replace: boolean) => Promise<void>;
   saveVideo: (value: string | null) => Promise<void>;
-  saveExecutable: (path: string) => Promise<void>;
+  saveLaunch: (exePath: string, launchArgs: string | null) => Promise<void>;
+  saveSavePath: (savePath: string) => Promise<void>;
   restoreSteam: () => Promise<void>;
 }) {
   const introduction = useMemo(
@@ -121,6 +138,7 @@ export default function GamePage({
   const screenshots = game.screenshots.length
     ? game.screenshots
     : introduction.screenshots;
+  const displayTags = useMemo(() => formatStoryTags(game.tags), [game.tags]);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(game.title);
   const [error, setError] = useState("");
@@ -131,18 +149,20 @@ export default function GamePage({
   const [coverOpen, setCoverOpen] = useState(false);
   const [matching, setMatching] = useState<"match" | "refresh" | null>(null);
   const [videoDraft, setVideoDraft] = useState(videoUrl || "");
-  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [screenshotIndex, setScreenshotIndex] = useState<number | null>(null);
   const [choosingExecutable, setChoosingExecutable] = useState(false);
-  const [exeDraft, setExeDraft] = useState(game.exePath || "");
-  const [exeBusy, setExeBusy] = useState(false);
-  const [exeError, setExeError] = useState("");
+  const [saveBackupOpen, setSaveBackupOpen] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoNotice, setVideoNotice] = useState("");
   const [videoFailed, setVideoFailed] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoRetry, setVideoRetry] = useState(0);
+  const [sessions, setSessions] = useState<PlaySession[]>([]);
+  const [launchProfile, setLaunchProfile] =
+    useState<EffectiveLaunchProfile | null>(null);
   const hero = useRef<HTMLElement>(null);
   const [compactLaunch, setCompactLaunch] = useState(false);
+
   useEffect(() => {
     const target = hero.current;
     if (!target) return;
@@ -157,6 +177,49 @@ export default function GamePage({
     observer.observe(target);
     return () => observer.disconnect();
   }, [game.id]);
+
+  useEffect(() => {
+    if (!desktop) return;
+    let active = true;
+    void invoke<PlaySession[]>("play_sessions_list", {
+      gameId: game.id,
+      limit: 200,
+    })
+      .then((rows) => {
+        if (active) setSessions(rows);
+      })
+      .catch(() => {});
+    void launchProfileGet(game.id)
+      .then((profile) => {
+        if (active) setLaunchProfile(profile);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [game.id, game.playTimeSeconds, choosingExecutable]);
+
+  useEffect(() => {
+    if (screenshotIndex === null || screenshots.length <= 1) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setScreenshotIndex((index) =>
+          index === null
+            ? null
+            : (index - 1 + screenshots.length) % screenshots.length,
+        );
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setScreenshotIndex((index) =>
+          index === null ? null : (index + 1) % screenshots.length,
+        );
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [screenshotIndex, screenshots.length]);
+
   const videoIsPage = videoUrl
     ? /(^|\.)(bilibili\.com|b23\.tv|youtube\.com|youtu\.be|vimeo\.com)$/.test(
         new URL(videoUrl).hostname,
@@ -172,9 +235,23 @@ export default function GamePage({
   const src = coverSrc(game.customCoverPath || game.coverPath);
   const hasCover = Boolean(src && failedCover !== src);
   const status = statusOf(game);
+  const ambientSrc = screenshots[0] || (hasCover ? src : undefined);
   useEffect(() => {
     setCoverOpen(false);
+    setScreenshotIndex(null);
   }, [game.id, src]);
+
+  const firstSessionAt = sessions.length
+    ? sessions[sessions.length - 1]?.startedAt
+    : null;
+  const footprintText = formatStoryFootprint({
+    createdAt: game.createdAt,
+    lastPlayedAt: game.lastPlayedAt,
+    firstSessionAt,
+    status,
+    playTimeSeconds: game.playTimeSeconds,
+    sessionCount: sessions.length,
+  });
 
   async function chooseCover() {
     setCoverError("");
@@ -243,8 +320,18 @@ export default function GamePage({
     }
   }
 
+  const activeScreenshot =
+    screenshotIndex !== null ? screenshots[screenshotIndex] || null : null;
+
   return (
     <div className="gg-game-page">
+      {ambientSrc && (
+        <div
+          className="gg-detail-ambient"
+          style={{ backgroundImage: `url("${ambientSrc}")` }}
+          aria-hidden="true"
+        />
+      )}
       <div
         className={`gg-game-navigation ${compactLaunch ? "has-compact" : ""}`}
       >
@@ -259,6 +346,7 @@ export default function GamePage({
               game={game}
               launch={launch}
               pending={launchPending}
+              steamRunning={steamRunning}
               compact
             />
           </>
@@ -377,15 +465,16 @@ export default function GamePage({
               <strong>{formatPlayTime(game.playTimeSeconds)}</strong>
             </div>
           </div>
-          <div className="gg-hero-note">
-            <ClockCounterClockwiseIcon size={17} />
-            <span>慢慢进入故事，按自己的节奏。</span>
+          <div className="gg-story-footprint">
+            <ClockCounterClockwiseIcon size={15} />
+            <span>{footprintText}</span>
           </div>
           <div className="gg-hero-actions">
             <GameLaunchButton
               game={game}
               launch={launch}
               pending={launchPending}
+              steamRunning={steamRunning}
               className="gg-hero-play"
             />
             <button
@@ -423,18 +512,40 @@ export default function GamePage({
                 ? "由 Steam 启动"
                 : game.exePath?.split(/[\\/]/).pop() || "尚未选择 EXE"}
             </p>
+            {launchProfile?.locale && game.source !== "steam" && (
+              <span className="gg-launch-pill">日区转区</span>
+            )}
+            {launchProfile?.magpie && game.source !== "steam" && (
+              <span className="gg-launch-pill">
+                Magpie 超分
+                {launchProfile.scalingMode
+                  ? ` · ${launchProfile.scalingMode}`
+                  : ""}
+              </span>
+            )}
+            {game.launchArgs && (
+              <span className="gg-launch-pill" title={game.launchArgs}>
+                含启动参数
+              </span>
+            )}
             <button
               className="gg-text-button"
-              aria-label="选择启动 EXE"
-              onClick={() => {
-                setExeDraft(game.exePath || "");
-                setExeError("");
-                setChoosingExecutable(true);
-              }}
+              aria-label="启动与辅助设置"
+              onClick={() => setChoosingExecutable(true)}
             >
-              <FolderOpenIcon size={13} />
-              更换启动程序
+              <SlidersHorizontalIcon size={13} />
+              启动与辅助
             </button>
+            {desktop && (
+              <button
+                className="gg-text-button"
+                aria-label="本地存档快照"
+                onClick={() => setSaveBackupOpen(true)}
+              >
+                <ArchiveBoxIcon size={13} />
+                存档备份
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -494,13 +605,23 @@ export default function GamePage({
           )}
           {screenshots.length > 0 && (
             <div className="gg-story-screenshots">
-              <h3>游戏截图</h3>
-              <div className="gg-screenshot-grid">
+              <h3>
+                游戏截图
+                <span>共 {screenshots.length} 张</span>
+              </h3>
+              <div
+                className={`gg-screenshot-grid ${screenshots.length >= 3 ? "has-featured" : ""}`}
+              >
                 {screenshots.map((url, index) => (
                   <button
                     key={url}
+                    className={
+                      index === 0 && screenshots.length >= 3
+                        ? "is-featured"
+                        : ""
+                    }
                     aria-label={`放大 ${game.title} 游戏截图 ${index + 1}`}
-                    onClick={() => setScreenshot(url)}
+                    onClick={() => setScreenshotIndex(index)}
                   >
                     <img
                       src={url}
@@ -520,9 +641,21 @@ export default function GamePage({
               故事标签
             </h3>
             <div className="gg-tags">
-              {game.tags.map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
+              {displayTags.length > 0 ? (
+                displayTags.map((tag) => (
+                  <span
+                    key={tag.key}
+                    data-kind={tag.kind}
+                    title={
+                      tag.raw !== tag.label ? `原标签：${tag.raw}` : undefined
+                    }
+                  >
+                    {tag.label}
+                  </span>
+                ))
+              ) : (
+                <span className="gg-tags-empty">暂无故事标签</span>
+              )}
             </div>
           </div>
         </section>
@@ -685,14 +818,53 @@ export default function GamePage({
           />
         </Modal>
       )}
-      {screenshot && (
-        <Modal title="游戏截图" close={() => setScreenshot(null)} wide>
-          <img
-            className="gg-screenshot-full"
-            src={screenshot}
-            alt={game.title + "游戏截图"}
-            onClick={() => setScreenshot(null)}
-          />
+      {activeScreenshot && screenshotIndex !== null && (
+        <Modal
+          title="游戏截图"
+          subtitle={`${game.title} · 第 ${screenshotIndex + 1} / ${screenshots.length} 张${screenshots.length > 1 ? "（支持 ← / → 键盘翻页）" : ""}`}
+          close={() => setScreenshotIndex(null)}
+          wide
+        >
+          <div className="gg-lightbox">
+            <img
+              className="gg-screenshot-full"
+              src={activeScreenshot}
+              alt={`${game.title} 游戏截图 ${screenshotIndex + 1}`}
+              onClick={() => setScreenshotIndex(null)}
+            />
+            {screenshots.length > 1 && (
+              <div className="gg-lightbox-controls">
+                <button
+                  type="button"
+                  className="gg-button gg-secondary"
+                  onClick={() =>
+                    setScreenshotIndex(
+                      (screenshotIndex - 1 + screenshots.length) %
+                        screenshots.length,
+                    )
+                  }
+                >
+                  <CaretLeftIcon size={16} />
+                  上一张
+                </button>
+                <span>
+                  {screenshotIndex + 1} / {screenshots.length}
+                </span>
+                <button
+                  type="button"
+                  className="gg-button gg-secondary"
+                  onClick={() =>
+                    setScreenshotIndex(
+                      (screenshotIndex + 1) % screenshots.length,
+                    )
+                  }
+                >
+                  下一张
+                  <CaretRightIcon size={16} />
+                </button>
+              </div>
+            )}
+          </div>
         </Modal>
       )}
       <TouchGalResources url={game.touchgalUrl} />
@@ -708,119 +880,19 @@ export default function GamePage({
         />
       )}
       {choosingExecutable && (
-        <Modal
-          title="选择启动程序"
-          subtitle="多个 EXE 时，选择你实际使用的游戏主程序。"
-          close={() => {
-            if (!exeBusy) setChoosingExecutable(false);
-          }}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setExeError("");
-              let path: string;
-              try {
-                path = selectedExecutable(exeDraft);
-              } catch (cause) {
-                setExeError((cause as Error).message);
-                return;
-              }
-              setExeBusy(true);
-              void saveExecutable(path)
-                .then(() => setChoosingExecutable(false))
-                .catch((cause) =>
-                  setExeError(
-                    cause instanceof Error ? cause.message : String(cause),
-                  ),
-                )
-                .finally(() => setExeBusy(false));
-            }}
-          >
-            <label className="gg-field">
-              启动 EXE
-              <input
-                value={exeDraft}
-                placeholder="D:\Games\作品名称\Game.exe"
-                required
-                onChange={(event) => setExeDraft(event.target.value)}
-              />
-            </label>
-            {desktop && (
-              <button
-                type="button"
-                className="gg-button gg-secondary"
-                disabled={exeBusy}
-                onClick={() => {
-                  setExeError("");
-                  void import("@tauri-apps/plugin-dialog")
-                    .then(({ open }) =>
-                      open({
-                        title: "选择游戏启动 EXE",
-                        defaultPath: game.installPath,
-                        multiple: false,
-                        filters: [
-                          { name: "Windows 启动程序", extensions: ["exe"] },
-                        ],
-                      }),
-                    )
-                    .then((path) => {
-                      if (typeof path === "string") setExeDraft(path);
-                    })
-                    .catch((cause) =>
-                      setExeError(
-                        cause instanceof Error ? cause.message : String(cause),
-                      ),
-                    );
-                }}
-              >
-                <FolderOpenIcon size={17} />
-                浏览 EXE
-              </button>
-            )}
-            <p className="gg-field-note">
-              保存后将直接运行所选 EXE。
-              {!desktop &&
-                "网页预览只保存路径；本地文件选择与程序启动需要桌面版。"}
-            </p>
-            {exeError && (
-              <p className="gg-form-error" role="alert">
-                {exeError}
-              </p>
-            )}
-            <div className="gg-dialog-footer">
-              {game.steamAppId && game.source !== "steam" ? (
-                <button
-                  type="button"
-                  disabled={exeBusy}
-                  className="gg-button gg-secondary"
-                  onClick={() => {
-                    setExeBusy(true);
-                    void restoreSteam()
-                      .then(() => setChoosingExecutable(false))
-                      .catch((cause) => setExeError(String(cause)))
-                      .finally(() => setExeBusy(false));
-                  }}
-                >
-                  恢复 Steam 启动
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={exeBusy}
-                  className="gg-button gg-secondary"
-                  onClick={() => setChoosingExecutable(false)}
-                >
-                  取消
-                </button>
-              )}
-              <button disabled={exeBusy} className="gg-button gg-primary">
-                保存启动程序
-                <CheckIcon size={16} />
-              </button>
-            </div>
-          </form>
-        </Modal>
+        <LaunchSettingsModal
+          game={game}
+          close={() => setChoosingExecutable(false)}
+          saveLaunch={saveLaunch}
+          restoreSteam={restoreSteam}
+        />
+      )}
+      {saveBackupOpen && desktop && (
+        <SaveBackupModal
+          game={game}
+          close={() => setSaveBackupOpen(false)}
+          saveSavePath={saveSavePath}
+        />
       )}
       {editing && (
         <Modal

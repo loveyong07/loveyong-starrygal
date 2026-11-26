@@ -208,6 +208,7 @@ pub fn run() {
             scanner::discovery::discover_installed_games,
             scanner::discovery::cancel_game_discovery,
             scanner::discovery::launch_steam_game,
+            scanner::discovery::steam_running_games,
             // scanner (manual exe import)
             scanner::inspect_exe_file,
             // archive extraction (archive-import)

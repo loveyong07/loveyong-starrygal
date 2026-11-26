@@ -29,7 +29,7 @@ export function useGameLauncher(onLaunched?: () => void) {
       const outcome = await gameProcesses.start(game.id, async () => {
         await loadInstallationState();
         if (useInstallationStore.getState().archived[game.id]) throw new Error("该游戏已卸载 / 已归档。请重新安装，并在游戏详情中更新路径、恢复为已安装后再启动。");
-        if (!game.exePath?.trim()) throw new Error("尚未设置可执行文件，请在游戏详情的「路径与启动」中选择文件并保存。");
+        if (!game.exePath?.trim()) throw new Error("尚未设置可执行文件，请在作品详情页点击「启动与辅助」选择 EXE 并保存。");
         const effective = await launchProfileGet(game.id);
         const restartMagpie = effective.magpie && Boolean(effective.profile.scalingMode) && (await magpieStatus()).running;
         // Avoid launching from a page that was left during the preflight.

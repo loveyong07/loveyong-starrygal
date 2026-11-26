@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   defaultAppearance,
   normalizeAppearance,
+  resolveThemeMode,
 } from "../src/features/galgame/appearance.ts";
 
 test("existing transparent glass and a personal wallpaper survive the appearance upgrade", () => {
@@ -53,4 +54,15 @@ test("malformed appearance data and out-of-range values are safe to load", () =>
   assert.equal(result.wallpaper, "");
   assert.equal(result.reduceMotion, true);
   assert.equal(result.particles, true);
+  assert.equal(result.themeMode, "light");
+});
+
+test("daylight, starry night, and system theme modes normalize and resolve safely", () => {
+  assert.equal(normalizeAppearance({ themeMode: "dark" }).themeMode, "dark");
+  assert.equal(normalizeAppearance({ themeMode: "system" }).themeMode, "system");
+  assert.equal(normalizeAppearance({ themeMode: "sepia" }).themeMode, "light");
+  assert.equal(resolveThemeMode("light", true), "light");
+  assert.equal(resolveThemeMode("dark", false), "dark");
+  assert.equal(resolveThemeMode("system", true), "dark");
+  assert.equal(resolveThemeMode("system", false), "light");
 });

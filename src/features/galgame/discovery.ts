@@ -28,7 +28,12 @@ export async function cancelDiscovery() {
   if (desktop) await invoke<void>("cancel_game_discovery");
 }
 
-export async function launchSteamGame(appId: string) {
+export async function launchSteamGame(appId: string, gameId?: number) {
   if (!/^[1-9]\d*$/.test(appId)) throw new Error("Steam 游戏编号无效。");
-  return invoke<void>("launch_steam_game", { appId });
+  return invoke<void>("launch_steam_game", { appId, gameId: gameId ?? null });
+}
+
+export async function listSteamRunningGames(): Promise<number[]> {
+  if (!desktop) return [];
+  return invoke<number[]>("steam_running_games");
 }

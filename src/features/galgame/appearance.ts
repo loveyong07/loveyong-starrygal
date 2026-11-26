@@ -1,3 +1,5 @@
+export type ThemeMode = "light" | "dark" | "system";
+
 /** Appearance is normalized separately from storage so old preferences remain usable. */
 export interface Appearance {
   opacity: number;
@@ -7,6 +9,7 @@ export interface Appearance {
   particles: boolean;
   reduceMotion: boolean;
   palette: "blue" | "lilac" | "rose";
+  themeMode: ThemeMode;
   wallpaper: string;
 }
 
@@ -18,8 +21,18 @@ export const defaultAppearance: Appearance = {
   particles: true,
   reduceMotion: false,
   palette: "blue",
+  themeMode: "light",
   wallpaper: "",
 };
+
+export function resolveThemeMode(
+  themeMode: ThemeMode,
+  prefersDark: boolean,
+): "light" | "dark" {
+  if (themeMode === "dark") return "dark";
+  if (themeMode === "system") return prefersDark ? "dark" : "light";
+  return "light";
+}
 
 function bounded(value: unknown, fallback: number, max = 100): number {
   return typeof value === "number" && Number.isFinite(value)
@@ -41,6 +54,10 @@ export function normalizeAppearance(value: unknown): Appearance {
       saved.palette === "lilac" || saved.palette === "rose"
         ? saved.palette
         : "blue",
+    themeMode:
+      saved.themeMode === "dark" || saved.themeMode === "system"
+        ? saved.themeMode
+        : "light",
     wallpaper:
       typeof saved.wallpaper === "string" &&
       (/^data:image\/(png|jpeg|webp);base64,/.test(saved.wallpaper) ||

@@ -140,9 +140,45 @@ export async function clearPreviewCover(gameId: number): Promise<void> {
   revokeMediaUrl(key);
 }
 
+async function optimizeWallpaperBlob(image: Blob): Promise<Blob> {
+  if (
+    typeof createImageBitmap !== "function" ||
+    typeof document === "undefined"
+  ) {
+    return image;
+  }
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(image);
+    const maxEdge = 2560;
+    const { width, height } = bitmap;
+    if (width <= maxEdge && height <= maxEdge) return image;
+    const scale = maxEdge / Math.max(width, height);
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return image;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    const converted = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/webp", 0.9),
+    );
+    return converted && converted.size > 0 ? converted : image;
+  } catch {
+    return image;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 export async function savePreviewWallpaper(image: Blob): Promise<string> {
-  await writeMedia("wallpaper", image);
-  return mediaUrl("wallpaper", image);
+  const optimized = await optimizeWallpaperBlob(image);
+  await writeMedia("wallpaper", optimized);
+  return mediaUrl("wallpaper", optimized);
 }
 
 export async function clearPreviewWallpaper(): Promise<void> {
@@ -150,7 +186,12 @@ export async function clearPreviewWallpaper(): Promise<void> {
   revokeMediaUrl("wallpaper");
 }
 
-export { defaultAppearance, type Appearance } from "./appearance";
+export {
+  defaultAppearance,
+  resolveThemeMode,
+  type Appearance,
+  type ThemeMode,
+} from "./appearance";
 
 export function loadAppearance(): Appearance {
   try {

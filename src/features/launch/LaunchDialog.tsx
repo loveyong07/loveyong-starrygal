@@ -1,33 +1,25 @@
 /**
- * 「启动窗口」 — the launch panel for one game.
- *
- * The backend launcher (`launch_game` / `stop_game`) has existed since early on,
- * but until now nothing in the UI called it: the detail page only had a 启动参数
- * text field. This dialog is that missing entry point.
- *
- * It is deliberately **read-only about configuration**. The exe path, working
- * directory and arguments are edited in the detail page's 路径与启动 tab; letting
- * both places write them would mean two sources of truth for the same fields and
- * a save in one silently discarding the other.
- *
- * Launching is handled by `launchGame`, which starts the process, opens a play
- * session and stamps `last_played_at`. The process-exit watcher on the Rust side
- * closes the session, adds to `play_time_seconds` and emits `game-exited`, which
- * is what the caller uses to refresh the displayed totals.
+ * 「启动窗口」 — the launch panel for one game, rendered with StarryGal's
+ * unified frosted-glass modal system.
  */
 
 import { useEffect, useRef, useState } from "react";
-
-import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import {
+  ArrowClockwiseIcon,
+  FolderOpenIcon,
+  GameControllerIcon,
+  PlayIcon,
+  StopCircleIcon,
+  WarningCircleIcon,
+} from "@phosphor-icons/react";
+import { Modal } from "@/features/galgame/StudioDialogs";
 import { errorMessage } from "@/features/io/io";
+import { magpieQuit, magpieStatus } from "@/features/tools/io";
 import { formatPlayTime } from "@/types/game";
 import type { Game } from "@/types/game";
 import { gameProcesses } from "./game-process";
+import { launchProfileGet, type EffectiveLaunchProfile } from "./profile-api";
 import { useGameProcess } from "./useGameProcess";
-import { launchProfileGet } from './profile-api';
-import type { EffectiveLaunchProfile } from './profile-api';
-import { magpieQuit, magpieStatus } from '@/features/tools/io';
 
 export interface LaunchDialogProps {
   open: boolean;
@@ -37,21 +29,12 @@ export interface LaunchDialogProps {
   onLaunched?: () => void;
 }
 
-/** One read-only `label: value` row; `empty` renders in the muted style. */
-function Row({ label, value }: { label: string; value: string | null }) {
+function LaunchRow({ label, value }: { label: string; value: string | null }) {
   const missing = !value || value.trim() === "";
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd
-        className={
-          missing
-            ? "break-all text-xs italic text-muted-foreground"
-            : "break-all font-mono text-xs"
-        }
-      >
-        {missing ? "未设置" : value}
-      </dd>
+    <div className="gg-launch-row">
+      <dt>{label}</dt>
+      <dd className={missing ? "is-empty" : ""}>{missing ? "未设置" : value}</dd>
     </div>
   );
 }
@@ -69,13 +52,17 @@ export default function LaunchDialog({
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [effective, setEffective] = useState<EffectiveLaunchProfile | null>(null);
+  const [effective, setEffective] = useState<EffectiveLaunchProfile | null>(
+    null,
+  );
   const [restartMagpie, setRestartMagpie] = useState(false);
   const pending = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   const exePath = game.exePath?.trim() ?? "";
@@ -86,11 +73,23 @@ export default function LaunchDialog({
     setError(null);
     let alive = true;
     setRestartMagpie(false);
-    void launchProfileGet(game.id).then(async value => {
-      const restart = value.magpie && Boolean(value.profile.scalingMode) && (await magpieStatus()).running;
-      if (alive) { setEffective(value); setRestartMagpie(restart); }
-    }).catch(cause => { if (alive) setError(errorMessage(cause)); });
-    return () => { alive = false; };
+    void launchProfileGet(game.id)
+      .then(async (value) => {
+        const restart =
+          value.magpie &&
+          Boolean(value.profile.scalingMode) &&
+          (await magpieStatus()).running;
+        if (alive) {
+          setEffective(value);
+          setRestartMagpie(restart);
+        }
+      })
+      .catch((cause) => {
+        if (alive) setError(errorMessage(cause));
+      });
+    return () => {
+      alive = false;
+    };
   }, [open, game.id]);
 
   async function start() {
@@ -101,7 +100,11 @@ export default function LaunchDialog({
     try {
       if (restartMagpie) {
         await magpieQuit();
-        if ((await magpieStatus()).running) throw new Error('Magpie 尚未退出，请在其实用工具页面或托盘中退出后重试。');
+        if ((await magpieStatus()).running) {
+          throw new Error(
+            "Magpie 尚未退出，请先在系统托盘退出 Magpie 后重试。",
+          );
+        }
         if (mounted.current) setRestartMagpie(false);
       }
       const outcome = await gameProcesses.start(game.id);
@@ -123,7 +126,6 @@ export default function LaunchDialog({
       const stopped = await gameProcesses.stop(game.id);
       if (!mounted.current) return;
       if (!stopped) {
-        // Not an error: the process may already have exited on its own.
         setError("没有找到正在运行的进程（可能已经退出）。");
       }
       onLaunched?.();
@@ -135,73 +137,115 @@ export default function LaunchDialog({
     }
   }
 
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
+    <Modal
       title="启动游戏"
-      description={game.title}
-      footer={
-        <>
-          {running ? (
-            <Button variant="outline" loading={busy} onClick={() => void stop()}>
-              停止游戏
-            </Button>
-          ) : null}
-          <Button variant="outline" onClick={onClose} disabled={busy}>
-            关闭
-          </Button>
-          <Button
-            loading={busy || launching}
-            disabled={!canLaunch || running}
-            onClick={() => void start()}
-            title={canLaunch ? undefined : "未设置 exe 路径"}
-          >
-            {launching ? "启动中…" : running ? "运行中" : restartMagpie ? '退出 Magpie 并启动游戏' : "启动游戏"}
-          </Button>
-        </>
-      }
+      subtitle={game.title}
+      close={() => {
+        if (!busy) onClose();
+      }}
     >
-      <div className="flex flex-col gap-4">
-        {restartMagpie ? <p className="rounded-md border border-primary/40 bg-primary/10 p-3 text-xs leading-relaxed">Magpie 已在运行，应用本款缩放模式需要重新启动它。确认启动会先退出当前 Magpie，再按本款配置启动；其他游戏正在使用的缩放也会结束。</p> : null}
-        {!canLaunch ? (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs">
-            还没有设置 exe 路径，无法启动。请先到上方的「路径与启动」标签里填写并保存。
+      <div className="gg-glass-modal-stack">
+        {restartMagpie && (
+          <div className="gg-modal-banner is-info">
+            <WarningCircleIcon size={17} />
+            <span>
+              Magpie 已在运行，应用本款缩放模式需要重新启动它。确认启动会先退出当前
+              Magpie，再按本款配置启动；其他游戏正在使用的缩放也会结束。
+            </span>
           </div>
-        ) : null}
-
-        {error ? (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        )}
+        {!canLaunch && (
+          <div className="gg-modal-banner is-error" role="alert">
+            <FolderOpenIcon size={17} />
+            <span>
+              还没有设置 exe 路径，无法启动。请在作品详情页点击「启动与辅助」选择
+              EXE 并保存。
+            </span>
+          </div>
+        )}
+        {error && (
+          <p className="gg-form-error" role="alert">
             {error}
+          </p>
+        )}
+        {running && (
+          <div className="gg-modal-banner is-running" role="status">
+            <GameControllerIcon size={17} />
+            <strong>正在运行</strong>
+            {pid !== null && <span>PID {pid}</span>}
           </div>
-        ) : null}
+        )}
 
-        {running ? (
-          <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
-            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
-            <span className="font-medium">运行中</span>
-            {pid !== null ? (
-              <span className="text-muted-foreground">PID {pid}</span>
-            ) : null}
-          </div>
-        ) : null}
-
-        <dl className="flex flex-col gap-3">
-          {effective ? <Row label="本次启动配置" value={`转区${effective.locale ? '开启' : '关闭'} · Magpie ${effective.magpie ? '开启' : '关闭'} · Luna ${effective.luna ? '开启' : '关闭'}`} /> : null}
-          <Row label="可执行文件" value={game.exePath} />
-          <Row label="工作目录" value={game.workdir} />
-          <Row label="启动参数" value={game.launchArgs} />
-          <Row label="存档路径" value={game.savePath} />
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-muted-foreground">已记录游玩时长</dt>
-            <dd className="text-xs">{formatPlayTime(game.playTimeSeconds)}</dd>
-          </div>
+        <dl className="gg-launch-summary">
+          {effective && (
+            <LaunchRow
+              label="运行辅助"
+              value={`日区转区 ${effective.locale ? "开启" : "关闭"} · Magpie ${effective.magpie ? "开启" : "关闭"}${effective.scalingMode ? `（${effective.scalingMode}）` : ""}`}
+            />
+          )}
+          <LaunchRow label="可执行文件" value={game.exePath} />
+          <LaunchRow label="工作目录" value={game.workdir} />
+          <LaunchRow label="启动参数" value={game.launchArgs} />
+          <LaunchRow label="存档路径" value={game.savePath} />
+          <LaunchRow
+            label="已记录游玩时长"
+            value={formatPlayTime(game.playTimeSeconds)}
+          />
         </dl>
 
-        <p className="text-xs text-muted-foreground">
-          工作目录留空时会使用 exe 所在目录。如需转区或调整启动参数，请到「路径与启动」标签或设置页修改后保存。
+        <p className="gg-field-note">
+          可在作品详情页点击「启动与辅助」修改启动程序、参数、转区或 Magpie
+          超分设置。
         </p>
+
+        <div className="gg-dialog-footer">
+          {running && (
+            <button
+              type="button"
+              className="gg-button gg-secondary"
+              disabled={busy}
+              onClick={() => void stop()}
+            >
+              <StopCircleIcon size={16} />
+              停止游戏
+            </button>
+          )}
+          <button
+            type="button"
+            className="gg-button gg-secondary"
+            disabled={busy}
+            onClick={onClose}
+          >
+            关闭
+          </button>
+          <button
+            type="button"
+            className="gg-button gg-primary"
+            disabled={!canLaunch || running || busy || launching}
+            aria-busy={busy || launching}
+            title={canLaunch ? undefined : "未设置 exe 路径"}
+            onClick={() => void start()}
+          >
+            {busy || launching ? (
+              <ArrowClockwiseIcon className="gg-spin" size={16} />
+            ) : running ? (
+              <GameControllerIcon size={16} />
+            ) : (
+              <PlayIcon size={15} weight="fill" />
+            )}
+            {launching
+              ? "启动中…"
+              : running
+                ? "运行中"
+                : restartMagpie
+                  ? "退出 Magpie 并启动"
+                  : "启动游戏"}
+          </button>
+        </div>
       </div>
-    </Dialog>
+    </Modal>
   );
 }

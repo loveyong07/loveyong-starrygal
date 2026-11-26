@@ -12,12 +12,15 @@ import {
   ArrowUpRightIcon,
   CaretDownIcon,
   CheckIcon,
+  DesktopIcon,
   FolderOpenIcon,
   GithubLogoIcon,
   ImageSquareIcon,
   MagnifyingGlassIcon,
+  MoonStarsIcon,
   PaletteIcon,
   PlusIcon,
+  SunIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { BRAND } from "@/lib/brand";
@@ -262,6 +265,30 @@ export function AppearanceDialog({
           <section className="gg-material-personal" aria-label="个性化外观">
             <h3>留一点喜欢</h3>
             <div className="gg-settings-label">
+              <MoonStarsIcon size={16} />
+              外观模式
+            </div>
+            <div className="gg-theme-options" role="group" aria-label="外观模式">
+              {(
+                [
+                  ["light", "晴昼", SunIcon],
+                  ["dark", "星夜", MoonStarsIcon],
+                  ["system", "跟随系统", DesktopIcon],
+                ] as const
+              ).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={appearance.themeMode === value}
+                  className={appearance.themeMode === value ? "selected" : ""}
+                  onClick={() => change({ themeMode: value })}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="gg-settings-label gg-palette-label">
               <PaletteIcon size={16} />
               主题色
             </div>

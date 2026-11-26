@@ -15,6 +15,7 @@ import {
   SparkleIcon,
   SquaresFourIcon,
 } from "@phosphor-icons/react";
+import { coverSrc } from "@/lib/asset";
 import {
   GAME_STATUS_LABELS,
   formatPlayTime,
@@ -35,6 +36,15 @@ function recentLabel(game: LibraryGame): string {
     : "最近打开";
 }
 
+function gameCardMeta(game: LibraryGame): string {
+  if (game.source === "steam") {
+    return game.playTimeSeconds > 0
+      ? `Steam · ${formatPlayTime(game.playTimeSeconds)}`
+      : "Steam";
+  }
+  return formatPlayTime(game.playTimeSeconds);
+}
+
 export default function LibraryView({
   games,
   routeGames,
@@ -52,6 +62,7 @@ export default function LibraryView({
   sourceReady,
   metadataBatch,
   steamLaunching,
+  steamRunning,
   setFilter,
   setView,
   setSort,
@@ -82,6 +93,7 @@ export default function LibraryView({
   sourceReady: boolean;
   metadataBatch: boolean;
   steamLaunching: number[];
+  steamRunning: number[];
   setFilter: (value: LibraryFilter) => void;
   setView: (value: "grid" | "list") => void;
   setSort: (value: LibrarySort) => void;
@@ -108,6 +120,11 @@ export default function LibraryView({
         .slice(0, 3),
     [games],
   );
+  const [heroRecent, ...otherRecent] = recent;
+  const heroBackdrop = heroRecent
+    ? heroRecent.screenshots[0] ||
+      coverSrc(heroRecent.customCoverPath || heroRecent.coverPath)
+    : undefined;
   const titles = {
     library: "收藏每一场心动",
     favorites: "把喜欢，留在这里",
@@ -182,7 +199,7 @@ export default function LibraryView({
         </div>
       </section>
 
-      {showRecent && (
+      {showRecent && heroRecent && (
         <section className="gg-recent-section" aria-label="最近打开">
           <div className="gg-section-title">
             <h2>
@@ -191,34 +208,91 @@ export default function LibraryView({
             </h2>
             <span>熟悉的故事，一键出发</span>
           </div>
-          <div className="gg-recent-grid">
-            {recent.map((game) => (
-              <article key={game.id} className="gg-recent-card gg-glass">
-                <button
-                  className="gg-recent-open"
-                  onClick={() => openGame(game)}
-                  aria-label={`查看最近打开的 ${game.title}`}
-                >
-                  <GameArtwork game={game} />
-                </button>
-                <div className="gg-recent-copy">
-                  <button
-                    className="gg-recent-name"
-                    onClick={() => openGame(game)}
-                    title={game.title}
-                  >
-                    {game.title}
-                  </button>
-                  <span>{recentLabel(game)}</span>
-                  <GameLaunchButton
-                    game={game}
-                    launch={() => launch(game)}
-                    pending={steamLaunching.includes(game.id)}
-                    compact
-                  />
+          <div
+            className={`gg-recent-showcase ${otherRecent.length === 0 ? "is-single" : ""}`}
+          >
+            <article className="gg-spotlight-card gg-glass">
+              {heroBackdrop && (
+                <div
+                  className="gg-spotlight-backdrop"
+                  style={{ backgroundImage: `url("${heroBackdrop}")` }}
+                  aria-hidden="true"
+                />
+              )}
+              <button
+                className="gg-spotlight-poster"
+                onClick={() => openGame(heroRecent)}
+                aria-label={`查看最近打开的 ${heroRecent.title}`}
+              >
+                <GameArtwork game={heroRecent} />
+              </button>
+              <div className="gg-spotlight-copy">
+                <div className="gg-spotlight-kicker">
+                  <span>{recentLabel(heroRecent)}</span>
+                  {heroRecent.developer && <span>{heroRecent.developer}</span>}
                 </div>
-              </article>
-            ))}
+                <button
+                  className="gg-spotlight-title"
+                  onClick={() => openGame(heroRecent)}
+                  title={heroRecent.title}
+                >
+                  {heroRecent.title}
+                </button>
+                <p className="gg-spotlight-meta">
+                  {GAME_STATUS_LABELS[heroRecent.status]} ·{" "}
+                  {gameCardMeta(heroRecent)}
+                </p>
+                <div className="gg-spotlight-actions">
+                  <GameLaunchButton
+                    game={heroRecent}
+                    launch={() => launch(heroRecent)}
+                    pending={steamLaunching.includes(heroRecent.id)}
+                    steamRunning={steamRunning.includes(heroRecent.id)}
+                    label="继续故事"
+                  />
+                  <button
+                    type="button"
+                    className="gg-button gg-secondary"
+                    onClick={() => openGame(heroRecent)}
+                  >
+                    查看详情
+                    <ArrowRightIcon size={15} />
+                  </button>
+                </div>
+              </div>
+            </article>
+            {otherRecent.length > 0 && (
+              <div className="gg-recent-side">
+                {otherRecent.map((game) => (
+                  <article key={game.id} className="gg-recent-card gg-glass">
+                    <button
+                      className="gg-recent-open"
+                      onClick={() => openGame(game)}
+                      aria-label={`查看最近打开的 ${game.title}`}
+                    >
+                      <GameArtwork game={game} />
+                    </button>
+                    <div className="gg-recent-copy">
+                      <button
+                        className="gg-recent-name"
+                        onClick={() => openGame(game)}
+                        title={game.title}
+                      >
+                        {game.title}
+                      </button>
+                      <span>{recentLabel(game)}</span>
+                      <GameLaunchButton
+                        game={game}
+                        launch={() => launch(game)}
+                        pending={steamLaunching.includes(game.id)}
+                        steamRunning={steamRunning.includes(game.id)}
+                        compact
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -427,53 +501,79 @@ export default function LibraryView({
           <div
             className={`gg-collection-grid ${view === "list" ? "is-list" : ""}`}
           >
-            {displayed.map((game) => (
-              <article key={game.id} className="gg-collection-card">
-                <button
-                  className="gg-card-open"
-                  onClick={() => openGame(game)}
-                  aria-label={`查看 ${game.title}`}
+            {displayed.map((game) => {
+              const isSteamActive = steamRunning.includes(game.id);
+              return (
+                <article
+                  key={game.id}
+                  className={`gg-collection-card ${game.favorite ? "has-favorite" : ""} ${isSteamActive ? "is-running" : ""}`}
                 >
-                  <GameArtwork game={game} />
-                  <span className="gg-card-description">
-                    <strong title={game.title}>{game.title}</strong>
-                    <span className="gg-card-meta">
-                      <span className={`gg-game-state is-${game.status}`}>
-                        {game.status === "completed" && (
-                          <CheckCircleIcon size={12} />
-                        )}
-                        {GAME_STATUS_LABELS[game.status]}
-                      </span>
-                      <span>
-                        {game.source === "steam"
-                          ? "Steam"
-                          : formatPlayTime(game.playTimeSeconds)}
+                  <div className="gg-card-media">
+                    <button
+                      className="gg-card-open"
+                      onClick={() => openGame(game)}
+                      aria-label={`查看 ${game.title}`}
+                    >
+                      <GameArtwork game={game} />
+                    </button>
+                    {view === "grid" && (
+                      <div className="gg-card-quick-launch">
+                        <GameLaunchButton
+                          game={game}
+                          launch={() => launch(game)}
+                          pending={steamLaunching.includes(game.id)}
+                          steamRunning={isSteamActive}
+                          compact
+                          iconOnly
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="gg-card-caption-btn"
+                    onClick={() => openGame(game)}
+                    aria-label={`打开 ${game.title} 详情`}
+                  >
+                    <span className="gg-card-description">
+                      <strong title={game.title}>{game.title}</strong>
+                      <span className="gg-card-meta">
+                        <span className={`gg-game-state is-${game.status}`}>
+                          <i className="gg-state-dot" aria-hidden="true" />
+                          {game.status === "completed" && (
+                            <CheckCircleIcon size={12} />
+                          )}
+                          {GAME_STATUS_LABELS[game.status]}
+                        </span>
+                        <span>{gameCardMeta(game)}</span>
                       </span>
                     </span>
-                  </span>
-                </button>
-                <button
-                  className={`gg-card-favorite ${game.favorite ? "is-favorite" : ""}`}
-                  aria-label={`${game.favorite ? "取消收藏" : "收藏"} ${game.title}`}
-                  aria-pressed={Boolean(game.favorite)}
-                  title={game.favorite ? "取消收藏" : "收藏"}
-                  onClick={() => favorite(game)}
-                >
-                  <HeartIcon
-                    size={17}
-                    weight={game.favorite ? "fill" : "regular"}
-                  />
-                </button>
-                <div className="gg-card-launch">
-                  <GameLaunchButton
-                    game={game}
-                    launch={() => launch(game)}
-                    pending={steamLaunching.includes(game.id)}
-                    compact
-                  />
-                </div>
-              </article>
-            ))}
+                  </button>
+                  <button
+                    className={`gg-card-favorite ${game.favorite ? "is-favorite" : ""}`}
+                    aria-label={`${game.favorite ? "取消收藏" : "收藏"} ${game.title}`}
+                    aria-pressed={Boolean(game.favorite)}
+                    title={game.favorite ? "取消收藏" : "收藏"}
+                    onClick={() => favorite(game)}
+                  >
+                    <HeartIcon
+                      size={16}
+                      weight={game.favorite ? "fill" : "regular"}
+                    />
+                  </button>
+                  {view === "list" && (
+                    <div className="gg-card-launch">
+                      <GameLaunchButton
+                        game={game}
+                        launch={() => launch(game)}
+                        pending={steamLaunching.includes(game.id)}
+                        steamRunning={isSteamActive}
+                        compact
+                      />
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
         <footer className="gg-shelf-footer">

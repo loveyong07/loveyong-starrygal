@@ -2,6 +2,7 @@
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{LazyLock, Mutex};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
@@ -11,6 +12,8 @@ use crate::commands::error::{CmdError, CmdResult};
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
 static CANCELLED: AtomicBool = AtomicBool::new(false);
+static STEAM_WATCHING: LazyLock<Mutex<HashSet<i64>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+static STEAM_RUNNING: LazyLock<Mutex<HashSet<i64>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
 const MAX_DIRS: usize = 20_000;
 const MAX_GAMES: usize = 1_000;
 
@@ -269,11 +272,235 @@ pub async fn discover_installed_games(app: AppHandle) -> CmdResult<DiscoveryRepo
 #[tauri::command]
 pub fn cancel_game_discovery() { CANCELLED.store(true, Ordering::SeqCst); }
 
+fn normalize_dir_for_prefix(path: &Path) -> Option<String> {
+    let raw = path.to_string_lossy().trim().replace('/', "\\");
+    let stripped = raw.strip_prefix(r"\\?\").unwrap_or(&raw);
+    let trimmed = stripped.trim_end_matches('\\').to_lowercase();
+    if trimmed.is_empty() || (trimmed.len() <= 2 && trimmed.ends_with(':')) {
+        return None;
+    }
+    Some(trimmed)
+}
+
+pub(crate) fn is_process_inside_install_dir(process_exe: &Path, install_dir: &Path) -> bool {
+    let Some(dir_norm) = normalize_dir_for_prefix(install_dir) else {
+        return false;
+    };
+    let Some(exe_norm) = normalize_dir_for_prefix(process_exe) else {
+        return false;
+    };
+    let Some(rest) = exe_norm.strip_prefix(&dir_norm) else {
+        return false;
+    };
+    if !rest.starts_with('\\') {
+        return false;
+    }
+    let file_name = process_exe
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if !file_name.ends_with(".exe") {
+        return false;
+    }
+    let stem = file_name.strip_suffix(".exe").unwrap_or(&file_name);
+    !(stem.starts_with("unins")
+        || matches!(stem, "uninstall" | "setup" | "install" | "config" | "dxsetup")
+        || stem.starts_with("crash")
+        || stem.starts_with("update")
+        || stem.starts_with("vcredist"))
+}
+
+#[cfg(windows)]
+fn has_running_game_in_dir(install_dir: &Path) -> bool {
+    use std::mem::size_of;
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    if normalize_dir_for_prefix(install_dir).is_none() || !install_dir.is_dir() {
+        return false;
+    }
+    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+    if snapshot == INVALID_HANDLE_VALUE {
+        return false;
+    }
+    let snapshot = unsafe { OwnedHandle::from_raw_handle(snapshot) };
+    let mut entry = PROCESSENTRY32W {
+        dwSize: size_of::<PROCESSENTRY32W>() as u32,
+        ..Default::default()
+    };
+    let mut has_entry = unsafe { Process32FirstW(snapshot.as_raw_handle(), &mut entry) };
+    let mut buffer = vec![0u16; 1024];
+    while has_entry != 0 {
+        if entry.th32ProcessID > 4 {
+            let handle = unsafe {
+                OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, entry.th32ProcessID)
+            };
+            if !handle.is_null() {
+                let handle = unsafe { OwnedHandle::from_raw_handle(handle) };
+                let mut len = buffer.len() as u32;
+                let ok = unsafe {
+                    QueryFullProcessImageNameW(
+                        handle.as_raw_handle(),
+                        0,
+                        buffer.as_mut_ptr(),
+                        &mut len,
+                    )
+                };
+                if ok != 0 && len > 0 {
+                    let exe_path = PathBuf::from(String::from_utf16_lossy(&buffer[..len as usize]));
+                    if is_process_inside_install_dir(&exe_path, install_dir) {
+                        return true;
+                    }
+                }
+            }
+        }
+        entry.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+        has_entry = unsafe { Process32NextW(snapshot.as_raw_handle(), &mut entry) };
+    }
+    false
+}
+
+#[cfg(not(windows))]
+fn has_running_game_in_dir(_install_dir: &Path) -> bool {
+    false
+}
+
+fn current_steam_running() -> Vec<i64> {
+    let mut ids: Vec<i64> = STEAM_RUNNING
+        .lock()
+        .map(|set| set.iter().copied().collect())
+        .unwrap_or_default();
+    ids.sort_unstable();
+    ids
+}
+
 #[tauri::command]
-pub fn launch_steam_game(app: AppHandle, app_id: String) -> CmdResult<()> {
+pub fn steam_running_games() -> Vec<i64> {
+    current_steam_running()
+}
+
+struct SteamWatchGuard {
+    app: AppHandle,
+    game_id: i64,
+}
+
+impl Drop for SteamWatchGuard {
+    fn drop(&mut self) {
+        if let Ok(mut watching) = STEAM_WATCHING.lock() {
+            watching.remove(&self.game_id);
+        }
+        let changed = STEAM_RUNNING
+            .lock()
+            .map(|mut running| running.remove(&self.game_id))
+            .unwrap_or(false);
+        if changed {
+            let _ = self.app.emit("steam-running-changed", current_steam_running());
+        }
+    }
+}
+
+#[cfg(windows)]
+fn spawn_steam_watcher(app: AppHandle, game_id: i64) {
+    let inserted = STEAM_WATCHING
+        .lock()
+        .map(|mut set| set.insert(game_id))
+        .unwrap_or(false);
+    if !inserted {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        let _guard = SteamWatchGuard {
+            app: app.clone(),
+            game_id,
+        };
+        let Ok(db) = crate::commands::games::pool(&app).await else {
+            return;
+        };
+        let Ok(Some(install_path)) =
+            sqlx::query_scalar::<_, String>("SELECT install_path FROM games WHERE id = ?")
+                .bind(game_id)
+                .fetch_optional(&db)
+                .await
+        else {
+            return;
+        };
+        let install_dir = PathBuf::from(install_path.trim());
+        if normalize_dir_for_prefix(&install_dir).is_none() || !install_dir.is_dir() {
+            return;
+        }
+        // Wait up to 45 seconds for Steam to actually start the game process.
+        // Never fabricate a play session if no game process appears.
+        let mut detected = false;
+        for _ in 0..23 {
+            let dir = install_dir.clone();
+            let alive = tauri::async_runtime::spawn_blocking(move || has_running_game_in_dir(&dir))
+                .await
+                .unwrap_or(false);
+            if alive {
+                detected = true;
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+        if !detected {
+            return;
+        }
+        let Ok(session) = crate::commands::play_sessions::play_session_start(app.clone(), game_id).await else {
+            return;
+        };
+        if let Ok(mut running) = STEAM_RUNNING.lock() {
+            running.insert(game_id);
+        }
+        let _ = app.emit("steam-running-changed", current_steam_running());
+        let _ = app.emit("play-history-changed", ());
+
+        let started = std::time::Instant::now();
+        let mut last_checkpoint = std::time::Instant::now();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            let dir = install_dir.clone();
+            let alive = tauri::async_runtime::spawn_blocking(move || has_running_game_in_dir(&dir))
+                .await
+                .unwrap_or(false);
+            let elapsed = started.elapsed().as_secs() as i64;
+            if alive {
+                if last_checkpoint.elapsed() >= std::time::Duration::from_secs(15) {
+                    let _ = crate::launcher::sessions::checkpoint(&db, session.id, elapsed).await;
+                    last_checkpoint = std::time::Instant::now();
+                }
+                continue;
+            }
+            if let Ok(mut running) = STEAM_RUNNING.lock() {
+                running.remove(&game_id);
+            }
+            let _ = app.emit("steam-running-changed", current_steam_running());
+            let _ = crate::launcher::sessions::settle(&db, session.id, Some(elapsed)).await;
+            let _ = app.emit("play-history-changed", ());
+            break;
+        }
+    });
+}
+
+#[cfg(not(windows))]
+fn spawn_steam_watcher(_app: AppHandle, _game_id: i64) {}
+
+#[tauri::command]
+pub async fn launch_steam_game(app: AppHandle, app_id: String, game_id: Option<i64>) -> CmdResult<()> {
     let id = app_id.parse::<u32>().ok().filter(|id| *id > 0).ok_or_else(|| CmdError("Steam 游戏编号无效。".into()))?;
     app.opener().open_url(format!("steam://rungameid/{id}"), None::<&str>)
-        .map_err(|error| CmdError(format!("无法通过 Steam 启动游戏：{error}")))
+        .map_err(|error| CmdError(format!("无法通过 Steam 启动游戏：{error}")))?;
+    if let Some(gid) = game_id.filter(|gid| *gid > 0) {
+        spawn_steam_watcher(app, gid);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -352,5 +579,16 @@ mod tests {
         assert_eq!(folder_scan.len(), 2);
         let direct_patch = discover(&[f.0.join("Novel/补丁v1.2")], &[], &HashSet::new(), &AtomicBool::new(false), |_| {});
         assert!(direct_patch.games.is_empty());
+    }
+
+    #[test]
+    fn steam_process_matching_respects_directory_boundaries_and_ignores_auxiliary_exes() {
+        let dir = Path::new(r"D:\Games\ATRI");
+        assert!(is_process_inside_install_dir(Path::new(r"d:\games\atri\ATRI.exe"), dir));
+        assert!(is_process_inside_install_dir(Path::new(r"\\?\D:\Games\ATRI\bin\game.exe"), dir));
+        assert!(!is_process_inside_install_dir(Path::new(r"D:\Games\ATRI_2\Game.exe"), dir));
+        assert!(!is_process_inside_install_dir(Path::new(r"D:\Games\ATRI\unins000.exe"), dir));
+        assert!(!is_process_inside_install_dir(Path::new(r"D:\Games\ATRI\config.exe"), dir));
+        assert!(!is_process_inside_install_dir(Path::new(r"D:\Game.exe"), Path::new(r"D:\")));
     }
 }

@@ -47,6 +47,7 @@ import {
   clearPreviewCover,
   clearPreviewWallpaper,
   removeGame,
+  resolveThemeMode,
   savePreviewWallpaper,
   saveAppearance,
   titleFromPath,
@@ -75,6 +76,7 @@ import {
   cancelDiscovery,
   discoverInstalledGames,
   launchSteamGame,
+  listSteamRunningGames,
   type DiscoveredGame,
 } from "./discovery";
 import {
@@ -99,13 +101,21 @@ import {
   NoticeDialog,
   ScanResultsDialog,
 } from "./StudioDialogs";
+import { PathRepairModal } from "./StarryFeaturesDialogs";
 import GamePage from "./GamePage";
 import LibraryView, { type LibrarySort } from "./LibraryView";
 import "./galgame.css";
 import "./studio.css";
 
 type ModalKind =
-  "add" | "appearance" | "source" | "about" | "notice" | "scan" | null;
+  | "add"
+  | "appearance"
+  | "source"
+  | "about"
+  | "notice"
+  | "scan"
+  | "path-repair"
+  | null;
 type Filter = "all" | GameStatus;
 type UpdateCheckStatus =
   "idle" | "checking" | "current" | "available" | "no-release" | "error";
@@ -167,6 +177,12 @@ export default function GalgameApp() {
   const lastLibraryPath = useRef("/library");
   const steamPending = useRef(new Set<number>());
   const [steamLaunching, setSteamLaunching] = useState<number[]>([]);
+  const [steamRunning, setSteamRunning] = useState<number[]>([]);
+  const [prefersDark, setPrefersDark] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : false,
+  );
   const [libraryPreferencesReady, setLibraryPreferencesReady] = useState(false);
   const preferenceWrites = useRef(Promise.resolve());
   const main = useRef<HTMLElement>(null);
@@ -462,6 +478,33 @@ export default function GalgameApp() {
     if (!desktop) return;
     let active = true;
     let stop: (() => void) | undefined;
+    void listSteamRunningGames()
+      .then((ids) => {
+        if (active) setSteamRunning(ids);
+      })
+      .catch(() => {});
+    void import("@tauri-apps/api/event")
+      .then(({ listen }) =>
+        listen<number[]>("steam-running-changed", (event) => {
+          if (active && Array.isArray(event.payload)) {
+            setSteamRunning(event.payload);
+          }
+        }),
+      )
+      .then((unlisten) => {
+        if (active) stop = unlisten;
+        else unlisten();
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+      stop?.();
+    };
+  }, []);
+  useEffect(() => {
+    if (!desktop) return;
+    let active = true;
+    let stop: (() => void) | undefined;
     void import("@tauri-apps/api/event")
       .then(({ listen }) =>
         listen<string>("game-discovery-progress", (event) => {
@@ -685,8 +728,8 @@ export default function GalgameApp() {
       steamPending.current.add(item.id);
       setSteamLaunching([...steamPending.current]);
       try {
-        await launchSteamGame(item.steamAppId);
-        setToast("已向 Steam 发送启动请求。");
+        await launchSteamGame(item.steamAppId, item.id);
+        setToast("已向 Steam 发送启动请求，将自动跟踪游玩时长。");
       } catch (cause) {
         setToast(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -885,6 +928,27 @@ export default function GalgameApp() {
             : b.createdAt.localeCompare(a.createdAt),
     );
   const iconProps = { size: 20, weight: "regular" as const };
+  const resolvedTheme = resolveThemeMode(appearance.themeMode, prefersDark);
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setPrefersDark(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = resolvedTheme;
+    root.dataset.palette = appearance.palette;
+    root.style.setProperty("--gg-alpha", String(appearance.opacity / 100));
+    root.style.setProperty("--gg-blur", appearance.blur + "px");
+  }, [resolvedTheme, appearance.palette, appearance.opacity, appearance.blur]);
   const style = {
     "--gg-alpha": appearance.opacity / 100,
     "--gg-blur": appearance.blur + "px",
@@ -897,6 +961,7 @@ export default function GalgameApp() {
   return (
     <div
       className="gg-app"
+      data-theme={resolvedTheme}
       data-palette={appearance.palette}
       data-reduce-motion={appearance.reduceMotion}
       style={style}
@@ -1034,6 +1099,17 @@ export default function GalgameApp() {
           >
             公告
           </button>
+          {desktop && (
+            <button
+              className="gg-utility-item"
+              onClick={() => {
+                setUtilitiesExpanded(false);
+                setModal("path-repair");
+              }}
+            >
+              路径检查与修复
+            </button>
+          )}
           <button
             className="gg-utility-item"
             disabled={updateCheckStatus === "checking"}
@@ -1260,6 +1336,7 @@ export default function GalgameApp() {
                 }}
                 launch={() => void startGame(game)}
                 launchPending={steamLaunching.includes(game.id)}
+                steamRunning={steamRunning.includes(game.id)}
                 remove={() => setRemoveId(game.id)}
                 metadataBusy={metadataBusy}
                 metadataMessage={metadataMessage}
@@ -1275,18 +1352,22 @@ export default function GalgameApp() {
                     }),
                   );
                 }}
-                saveExecutable={async (path) => {
+                saveLaunch={async (exePath, launchArgs) => {
                   if (desktop) {
                     const { invoke } = await import("@tauri-apps/api/core");
-                    await invoke("game_executable_validate", { exePath: path });
+                    await invoke("game_executable_validate", { exePath });
                   }
                   replaceGame(
                     await updateGame(game.id, {
-                      exePath: path,
+                      exePath,
+                      launchArgs,
                       source: "local",
                     }),
                   );
-                  setToast("启动 EXE 已保存。");
+                  setToast("启动与辅助设置已保存。");
+                }}
+                saveSavePath={async (savePath) => {
+                  replaceGame(await updateGame(game.id, { savePath }));
                 }}
                 restoreSteam={async () => {
                   replaceGame(await updateGame(game.id, { source: "steam" }));
@@ -1325,6 +1406,7 @@ export default function GalgameApp() {
               sourceReady={sourceReady}
               metadataBatch={metadataBatch}
               steamLaunching={steamLaunching}
+              steamRunning={steamRunning}
               setFilter={setFilter}
               setView={(value) => {
                 setView(value);
@@ -1442,6 +1524,12 @@ export default function GalgameApp() {
         />
       )}
       {modal === "about" && <AboutDialog close={() => setModal(null)} />}
+      {modal === "path-repair" && desktop && (
+        <PathRepairModal
+          close={() => setModal(null)}
+          onApplied={refresh}
+        />
+      )}
       {modal === "scan" && (
         <ScanResultsDialog
           key={candidates.map((item) => item.installPath).join("|")}

@@ -6,14 +6,15 @@ export const REPOSITORY_URL =
 export const DOWNLOAD_URL = REPOSITORY_URL + "/releases";
 export const CONTACT_URL = "https://loveyong07.top/contact";
 // Increment only when the announcement itself changes so each notice is shown once.
-export const NOTICE_VERSION = "7";
+export const NOTICE_VERSION = "8";
 // Permanent announcement. Future releases must only edit NOTICE_UPDATES below.
 export const NOTICE_TEXT =
   "本启动器完全开源免费，请使用时务必将游戏名称填入正确的名称，以便于自动导入";
 export const NOTICE_UPDATES = [
-  "封面大小简化为小、大两档，移除与小封面显示接近的中封面；改为直接点选，当前大小一眼可见，重启后继续保留。旧中封面设置自动转为小封面。",
-  "网格中的游戏名称最多显示两行，长标题更容易辨认；卡片操作保持对齐，列表视图继续使用紧凑单行标题。",
-  "优化游戏库工具栏排版，较窄的桌面窗口中控件可自动换行；移除“外观与玻璃”右侧的装饰圆点。现有玻璃外观、游戏库、资料缓存、自定义封面、手动 PV 和游玩记录继续保留。",
+  "新增「晴昼 / 星夜 / 跟随系统」外观模式，全面升级通透玻璃光学层次与文学衬线标题排版，启动、关闭与所有功能弹窗统一为毛玻璃视觉。",
+  "「最近打开」升级为首屏继续故事焦点横幅，游戏库网格改为纯粹海报流与悬停零位移快捷启动，无封面作品支持星云渐变首字占位。",
+  "详情页加入作品专属柔焦氛围背景、吸顶启动栏、键盘翻页截图灯箱与只读标签中文映射，并温和展示故事游玩足迹。",
+  "桌面版在详情页「启动与辅助」中唤醒内置 Locale Emulator 日区转区与 Magpie 全屏超分，新增「存档备份」快照与左下角「路径检查与修复」，并支持检测 Steam 游戏真实运行进程统计游玩时长。",
 ];
 
 export type LibraryDensity = "compact" | "large";
@@ -203,4 +204,92 @@ export function selectedExecutable(value: string): string {
 
 export function noticeNeeded(seen: unknown) {
   return seen !== NOTICE_VERSION;
+}
+
+const ARTWORK_PALETTES: ReadonlyArray<readonly [number, number]> = [
+  [212, 242],
+  [250, 282],
+  [326, 352],
+  [194, 222],
+  [228, 262],
+  [340, 20],
+];
+
+/** Deterministic nebula gradient hues and monogram for games without a cover. */
+export function artworkPalette(title: string): {
+  hueA: number;
+  hueB: number;
+  monogram: string;
+} {
+  const trimmed = title.trim();
+  let hash = 2166136261;
+  for (const ch of trimmed) {
+    hash ^= ch.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  const [hueA, hueB] =
+    ARTWORK_PALETTES[hash % ARTWORK_PALETTES.length] ?? ARTWORK_PALETTES[0];
+  const cleaned = trimmed.replace(
+    /^[\s「『《【（(\[【·—\-~!！?？.。]+/u,
+    "",
+  );
+  const first = Array.from(cleaned || trimmed)[0] || "星";
+  return {
+    hueA,
+    hueB,
+    monogram: /[a-z]/i.test(first) ? first.toUpperCase() : first,
+  };
+}
+
+function formatFootprintDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
+function formatFootprintDuration(seconds: number): string {
+  const totalMinutes = Math.max(0, Math.floor(seconds / 60));
+  if (totalMinutes < 60) return `${Math.max(1, totalMinutes)} 分钟`;
+  const hours = totalMinutes / 60;
+  return `${hours >= 10 ? Math.round(hours) : hours.toFixed(1)} 小时`;
+}
+
+/** Gentle, read-only story footprint summary derived from session history. */
+export function formatStoryFootprint(input: {
+  createdAt?: string | null;
+  lastPlayedAt?: string | null;
+  firstSessionAt?: string | null;
+  status: GameStatus;
+  playTimeSeconds: number;
+  sessionCount?: number;
+}): string {
+  const createdDate = formatFootprintDate(input.createdAt) || "近日";
+  const firstDate =
+    formatFootprintDate(input.firstSessionAt) ||
+    formatFootprintDate(input.lastPlayedAt) ||
+    createdDate;
+  const sessionCount = input.sessionCount ?? 0;
+  if (input.playTimeSeconds > 0 || sessionCount > 0) {
+    const parts = [`初遇于 ${firstDate}`];
+    if (input.playTimeSeconds > 0) {
+      parts.push(`已陪伴 ${formatFootprintDuration(input.playTimeSeconds)}`);
+    } else {
+      parts.push(`共 ${sessionCount} 段启动记录`);
+    }
+    if (sessionCount > 1 && input.playTimeSeconds > 0) {
+      parts.push(`共 ${sessionCount} 段时光`);
+    }
+    if (input.status === "completed") {
+      parts.push("已通关收藏");
+    }
+    return parts.join(" · ");
+  }
+  if (input.status === "completed") {
+    return `收录于 ${createdDate} · 已走完这段旅程`;
+  }
+  return `收录于 ${createdDate} · 等待翻开第一页`;
 }

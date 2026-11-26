@@ -379,14 +379,29 @@ export function TouchGalMatchDialog({
       {busy && <p role="status">正在查询…</p>}
       {selected ? (
         <div className="gg-match-preview">
-          {selected.coverUrl && (
-            <img src={selected.coverUrl} alt={selected.title + "封面"} />
-          )}
-          <h3>{selected.title}</h3>
-          <p>
-            {selected.developer} {selected.releaseDate}
-          </p>
-          <p>{selected.description?.slice(0, 400)}</p>
+          <div className="gg-match-preview-grid">
+            {selected.coverUrl && (
+              <div className="gg-match-cover">
+                <img src={selected.coverUrl} alt={selected.title + "封面"} />
+              </div>
+            )}
+            <div className="gg-match-body">
+              <h3>{selected.title}</h3>
+              {selected.originalTitle && (
+                <p className="gg-match-original">{selected.originalTitle}</p>
+              )}
+              <div className="gg-match-meta">
+                {selected.developer && <span>{selected.developer}</span>}
+                {selected.releaseDate && <span>{selected.releaseDate}</span>}
+                {typeof selected.communityRating === "number" && (
+                  <span>评分 {selected.communityRating.toFixed(1)}</span>
+                )}
+              </div>
+              <p className="gg-match-desc">
+                {selected.description?.slice(0, 460) || "暂无作品简介。"}
+              </p>
+            </div>
+          </div>
           {!selectionOnly && (
             <label className="gg-check-field">
               <input
@@ -428,7 +443,7 @@ export function TouchGalMatchDialog({
       ) : (
         <>
           <div className="gg-source-results">
-            {items.map((item) => (
+            {items.map((item, idx) => (
               <button
                 key={item.uniqueId}
                 disabled={busy}
@@ -443,8 +458,14 @@ export function TouchGalMatchDialog({
                   })
                 }
               >
-                <strong>{item.name}</strong>
-                <span>查看资料 →</span>
+                <span className="gg-source-result-main">
+                  <span className="gg-source-result-index">{idx + 1}</span>
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>条目编号 · {item.uniqueId}</small>
+                  </span>
+                </span>
+                <span className="gg-source-result-action">查看资料 →</span>
               </button>
             ))}
           </div>

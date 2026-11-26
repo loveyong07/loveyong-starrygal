@@ -1,4 +1,28 @@
 /* Current desktop studio. The original stylesheet retains the upstream dialogs. */
+:root.galgame-theme {
+  --gg-font-display:
+    "Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC", "STZhongsong",
+    "Songti SC", "DengXian", "PingFang SC", "Microsoft YaHei UI", serif;
+}
+:root[data-theme="dark"].galgame-theme {
+  color-scheme: dark;
+  --gg-ink: #eaf1fc;
+  --gg-muted: #a6b7d0;
+  --gg-light: #899cb9;
+  --gg-primary: #78a9ea;
+  --gg-primary-dark: #9bc0f5;
+  --gg-primary-rgb: 120, 169, 234;
+}
+:root[data-theme="dark"][data-palette="lilac"].galgame-theme {
+  --gg-primary: #b49be8;
+  --gg-primary-dark: #cab8f4;
+  --gg-primary-rgb: 180, 155, 232;
+}
+:root[data-theme="dark"][data-palette="rose"].galgame-theme {
+  --gg-primary: #e19ab8;
+  --gg-primary-dark: #efb8cf;
+  --gg-primary-rgb: 225, 154, 184;
+}
 .gg-app {
   --gg-ink: #293f57;
   --gg-muted: #526b84;
@@ -7,22 +31,66 @@
   font-size: 14px;
   background: #dfeaf5;
 }
+.gg-app[data-theme="dark"] {
+  --gg-ink: #eaf1fc;
+  --gg-muted: #a6b7d0;
+  --gg-light: #899cb9;
+  --gg-primary: #78a9ea;
+  --gg-primary-dark: #9bc0f5;
+  --gg-primary-rgb: 120, 169, 234;
+  background: #0d1323;
+}
+.gg-app[data-theme="dark"][data-palette="lilac"] {
+  --gg-primary: #b49be8;
+  --gg-primary-dark: #cab8f4;
+  --gg-primary-rgb: 180, 155, 232;
+}
+.gg-app[data-theme="dark"][data-palette="rose"] {
+  --gg-primary: #e19ab8;
+  --gg-primary-dark: #efb8cf;
+  --gg-primary-rgb: 225, 154, 184;
+}
 .gg-wallpaper {
   opacity: var(--gg-wallpaper-opacity, 1);
+  transition: filter 220ms ease-out, opacity 180ms ease-out;
 }
 .gg-wallpaper::after {
   background: rgba(235, 244, 255, 0.13);
+  transition: background 220ms ease-out;
+}
+.gg-app[data-theme="dark"] .gg-wallpaper {
+  filter: brightness(0.46) saturate(1.18);
+}
+.gg-app[data-theme="dark"] .gg-wallpaper::after {
+  background: radial-gradient(
+    circle at 20% 10%,
+    rgba(74, 101, 166, 0.22),
+    rgba(11, 16, 30, 0.74)
+  );
 }
 .gg-glass {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, calc(var(--gg-alpha) * 0.88 + 0.035)),
+    rgba(255, 255, 255, calc(var(--gg-alpha) * 0.88 + 0.04)),
     rgba(239, 247, 255, var(--gg-alpha))
   );
-  border-color: rgba(255, 255, 255, 0.66);
+  border-color: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(var(--gg-blur)) saturate(1.28);
+  -webkit-backdrop-filter: blur(var(--gg-blur)) saturate(1.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.68),
-    0 6px 28px rgba(43, 73, 109, 0.035);
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 8px 30px rgba(43, 73, 109, 0.045);
+}
+.gg-app[data-theme="dark"] .gg-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(24, 33, 56, calc(var(--gg-alpha) * 0.85 + 0.2)),
+    rgba(16, 22, 39, calc(var(--gg-alpha) * 0.85 + 0.14))
+  );
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 36px rgba(4, 8, 18, 0.36);
 }
 .gg-app button,
 .gg-app a,
@@ -1739,6 +1807,1013 @@
   .gg-app *,
   .gg-app *::before,
   .gg-app *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .gg-particles {
+    display: none;
+  }
+}
+.gg-app[data-reduce-motion="true"] *,
+.gg-app[data-reduce-motion="true"] *::before,
+.gg-app[data-reduce-motion="true"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* ============================================================================
+   StarryGal Visual & Experience Upgrade Layer
+   ============================================================================ */
+
+/* Literary serif titles & tabular numerals */
+.gg-collection-heading h1,
+.gg-spotlight-title,
+.gg-hero-title h1,
+.gg-notice-title {
+  font-family: var(--gg-font-display);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+.gg-count,
+.gg-filter-pills button > span,
+.gg-hero-meta strong,
+.gg-card-meta,
+.gg-range-label output,
+.gg-lightbox-controls span {
+  font-variant-numeric: tabular-nums;
+}
+.gg-collection-heading {
+  position: relative;
+  padding: 14px 18px;
+  margin-left: -18px;
+  margin-right: -18px;
+  border-radius: 18px;
+  background: radial-gradient(
+    ellipse at 18% 50%,
+    rgba(255, 255, 255, 0.34),
+    rgba(255, 255, 255, 0.06) 65%,
+    transparent 100%
+  );
+}
+.gg-collection-heading p {
+  font-size: 12.5px;
+  color: var(--gg-muted);
+}
+.gg-section-title > span,
+.gg-page-footer,
+.gg-shelf-footer {
+  font-size: 11.5px;
+}
+
+/* Spotlight hero & recent side cards */
+.gg-recent-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.gg-recent-showcase.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.gg-spotlight-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  min-width: 0;
+}
+.gg-spotlight-backdrop {
+  position: absolute;
+  inset: -12px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px) saturate(1.2);
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 0;
+}
+.gg-spotlight-poster {
+  position: relative;
+  z-index: 1;
+  width: 92px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 11px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: 0 8px 22px rgba(31, 60, 94, 0.14);
+}
+.gg-spotlight-poster .gg-artwork {
+  border-radius: 10px;
+}
+.gg-spotlight-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gg-spotlight-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gg-spotlight-kicker > span {
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--gg-primary-dark);
+}
+.gg-spotlight-title {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--gg-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.gg-spotlight-title:hover {
+  color: var(--gg-primary-dark);
+}
+.gg-spotlight-meta {
+  font-size: 12px;
+  color: var(--gg-muted);
+}
+.gg-spotlight-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.gg-spotlight-actions .gg-button {
+  min-height: 35px;
+  height: 35px;
+  padding: 0 15px;
+  font-size: 12px;
+}
+.gg-recent-side {
+  display: grid;
+  gap: 10px;
+  align-content: stretch;
+}
+.gg-recent-side .gg-recent-card {
+  padding: 10px 12px;
+}
+
+/* Poster-first library cards (zero-displacement hover reveal) */
+.gg-collection-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 270px;
+  padding: 7px 7px 10px;
+}
+.gg-card-media {
+  position: relative;
+}
+.gg-card-quick-launch {
+  position: absolute;
+  right: 9px;
+  bottom: 9px;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+.gg-collection-card:hover .gg-card-quick-launch,
+.gg-collection-card:focus-within .gg-card-quick-launch,
+.gg-collection-card.is-running .gg-card-quick-launch {
+  opacity: 1;
+  pointer-events: auto;
+}
+.gg-play-button.is-icon-only {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(27, 50, 82, 0.24);
+}
+.gg-collection-grid:not(.is-list) .gg-card-favorite {
+  opacity: 0;
+  transition: opacity 150ms ease-out, background-color 150ms ease-out, color 150ms ease-out;
+}
+.gg-collection-grid:not(.is-list) .gg-card-favorite.is-favorite,
+.gg-collection-grid:not(.is-list) .gg-collection-card:hover .gg-card-favorite,
+.gg-collection-grid:not(.is-list) .gg-collection-card:focus-within .gg-card-favorite {
+  opacity: 1;
+}
+.gg-card-caption-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+.gg-card-caption-btn:hover .gg-card-description > strong {
+  color: var(--gg-primary-dark);
+}
+.gg-card-meta {
+  font-size: 11px;
+}
+.gg-state-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.78;
+}
+.gg-collection-grid.is-list .gg-collection-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 33px 130px;
+  gap: 16px;
+  align-items: center;
+  padding: 9px 15px 9px 9px;
+}
+.gg-collection-grid.is-list .gg-card-media {
+  width: 46px;
+}
+.gg-collection-grid.is-list .gg-card-caption-btn {
+  min-width: 0;
+}
+.gg-collection-grid.is-list .gg-card-description {
+  width: 100%;
+}
+
+/* Nebula artwork placeholder */
+.gg-artwork-empty {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    hsl(var(--gg-art-hue-a, 212) 62% 88% / 0.88),
+    hsl(var(--gg-art-hue-b, 242) 55% 82% / 0.88)
+  );
+}
+.gg-artwork-monogram {
+  position: absolute;
+  font-family: var(--gg-font-display);
+  font-style: normal;
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.34);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Detail page ambient, footprint, sticky media panel, gallery & tags */
+.gg-game-page {
+  position: relative;
+}
+.gg-game-page > *:not(.gg-detail-ambient):not(.gg-game-navigation) {
+  position: relative;
+  z-index: 1;
+}
+.gg-game-hero {
+  align-items: start;
+}
+.gg-detail-poster {
+  aspect-ratio: 2 / 3;
+  height: auto;
+  align-self: start;
+}
+.gg-game-navigation:not(.has-compact) .gg-back-button {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--gg-ink);
+}
+.gg-game-navigation:not(.has-compact) .gg-back-button:hover {
+  background: rgba(255, 255, 255, 0.68);
+}
+.gg-app[data-theme="dark"] .gg-game-navigation:not(.has-compact) .gg-back-button {
+  background: rgba(20, 27, 46, 0.56);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #eaf1fc;
+}
+.gg-app[data-theme="dark"] .gg-game-navigation:not(.has-compact) .gg-back-button:hover {
+  background: rgba(28, 38, 64, 0.78);
+}
+.gg-app[data-theme="dark"] .gg-story-panel h2,
+.gg-app[data-theme="dark"] .gg-film-panel h2,
+.gg-app[data-theme="dark"] .gg-resources-panel h2,
+.gg-app[data-theme="dark"] .gg-story-screenshots h3,
+.gg-app[data-theme="dark"] .gg-tags-section h3 {
+  color: #f0f5ff;
+}
+.gg-detail-ambient {
+  position: absolute;
+  top: -22px;
+  left: -34px;
+  right: -34px;
+  height: 360px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(42px) saturate(1.22);
+  opacity: 0.28;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.92) 0%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.92) 0%,
+    transparent 100%
+  );
+}
+.gg-game-navigation.has-compact {
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: rgba(241, 248, 255, calc(0.56 + var(--gg-alpha) * 0.36));
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow: 0 8px 26px rgba(33, 61, 93, 0.08);
+}
+.gg-story-footprint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--gg-muted);
+}
+.gg-launch-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid rgba(var(--gg-primary-rgb), 0.28);
+  background: rgba(var(--gg-primary-rgb), 0.12);
+  color: var(--gg-primary-dark);
+}
+.gg-film-panel {
+  position: sticky;
+  top: 64px;
+}
+.gg-story-screenshots h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.gg-story-screenshots h3 > span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gg-muted);
+}
+.gg-screenshot-grid.has-featured .is-featured {
+  grid-column: 1 / -1;
+}
+.gg-tags > span[data-kind="meta"] {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--gg-muted);
+  font-size: 11px;
+}
+.gg-tags > span[data-kind="story"] {
+  background: rgba(var(--gg-primary-rgb), 0.11);
+  border-color: rgba(var(--gg-primary-rgb), 0.24);
+  color: var(--gg-ink);
+  font-size: 11px;
+}
+.gg-tags-empty {
+  color: var(--gg-muted);
+  font-size: 12px;
+}
+.gg-lightbox {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.gg-lightbox-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--gg-muted);
+}
+
+/* Unified glass modal components & TouchGal preview improvements */
+.gg-glass-modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.gg-modal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.24);
+}
+.gg-modal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.gg-modal-card strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+.gg-path-text {
+  font-size: 12px;
+  color: var(--gg-muted);
+  overflow-wrap: anywhere;
+}
+.gg-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gg-button-sm {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px !important;
+  border-radius: 9px;
+}
+.gg-modal-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  font-size: 12px;
+  line-height: 1.65;
+  border: 1px solid rgba(var(--gg-primary-rgb), 0.28);
+  background: rgba(var(--gg-primary-rgb), 0.11);
+  color: var(--gg-ink);
+}
+.gg-modal-banner > span {
+  flex: 1;
+  min-width: 0;
+}
+.gg-modal-banner.is-error {
+  border-color: rgba(186, 86, 108, 0.42);
+  background: rgba(255, 232, 238, 0.55);
+  color: #8f3950;
+}
+.gg-modal-banner.is-running {
+  border-color: rgba(79, 148, 128, 0.4);
+  background: rgba(226, 250, 240, 0.55);
+  color: #2f6959;
+}
+.gg-launch-summary {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.22);
+}
+.gg-launch-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gg-launch-row dt {
+  font-size: 11px;
+  color: var(--gg-muted);
+}
+.gg-launch-row dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gg-ink);
+  overflow-wrap: anywhere;
+}
+.gg-launch-row dd.is-empty {
+  color: var(--gg-light);
+  font-style: italic;
+}
+.gg-close-options {
+  display: grid;
+  gap: 10px;
+}
+.gg-close-option-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.22);
+}
+.gg-close-option-item strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.gg-close-option-item p {
+  font-size: 12px;
+  color: var(--gg-muted);
+  line-height: 1.65;
+}
+.gg-close-footer {
+  flex-wrap: wrap;
+}
+.gg-close-remember {
+  margin: 0 auto 0 0 !important;
+  font-size: 12px !important;
+}
+.gg-assist-box {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.22);
+}
+.gg-assist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.gg-assist-copy strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.gg-assist-copy p {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--gg-muted);
+  line-height: 1.6;
+}
+.gg-assist-select {
+  margin-top: 2px !important;
+}
+.gg-assist-select select {
+  height: 38px;
+  border-radius: 9px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.36);
+  color: var(--gg-ink);
+  font-size: 12px;
+}
+.gg-backup-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.gg-backup-switches {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+.gg-backup-switches .gg-check-field {
+  margin: 0;
+  font-size: 12px;
+}
+.gg-snapshot-title {
+  display: block;
+  font-size: 12.5px;
+  color: var(--gg-ink);
+  padding-left: 6px;
+}
+.gg-path-repair-inputs {
+  display: grid;
+  gap: 10px;
+}
+.gg-save-notice {
+  font-size: 12px;
+  color: var(--gg-primary-dark);
+}
+.gg-theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.gg-theme-options button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.24);
+  color: var(--gg-muted);
+  font-size: 11.5px;
+}
+.gg-theme-options button.selected {
+  background: rgba(255, 255, 255, 0.66);
+  border-color: rgba(var(--gg-primary-rgb), 0.55);
+  color: var(--gg-primary-dark);
+  font-weight: 600;
+}
+.gg-palette-label {
+  margin-top: 2px;
+}
+
+/* Improved TouchGal results & preview */
+.gg-source-results > button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+}
+.gg-source-results > button:hover {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(var(--gg-primary-rgb), 0.42);
+}
+.gg-source-result-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  opacity: 1 !important;
+}
+.gg-source-result-main strong {
+  display: block;
+  font-size: 13px;
+  color: var(--gg-ink);
+}
+.gg-source-result-main small {
+  display: block;
+  font-size: 11px;
+  color: var(--gg-muted);
+}
+.gg-source-result-index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: rgba(var(--gg-primary-rgb), 0.14);
+  color: var(--gg-primary-dark);
+  font-size: 11px;
+  font-weight: 650;
+  flex-shrink: 0;
+}
+.gg-source-result-action {
+  color: var(--gg-primary-dark);
+  font-size: 12px;
+  opacity: 0.9 !important;
+}
+.gg-match-preview-grid {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.gg-match-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+}
+.gg-match-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.gg-match-body {
+  min-width: 0;
+}
+.gg-match-body h3 {
+  font-family: var(--gg-font-display);
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.gg-match-original {
+  font-size: 12px !important;
+  color: var(--gg-muted);
+  margin-bottom: 8px;
+}
+.gg-match-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.gg-match-meta span {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.34);
+  color: var(--gg-muted);
+}
+.gg-match-desc {
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 12.5px !important;
+  line-height: 1.75 !important;
+  opacity: 0.92 !important;
+}
+
+/* ============================================================================
+   Starry Night (Dark Glass) Theme Overrides
+   ============================================================================ */
+.gg-app[data-theme="dark"] .gg-sidebar {
+  background: rgba(15, 21, 38, calc(var(--gg-alpha) * 0.78 + 0.16));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 7px 0 42px rgba(4, 8, 20, 0.38);
+}
+.gg-app[data-theme="dark"] .gg-brand strong,
+.gg-app[data-theme="dark"] .gg-collection-heading h1,
+.gg-app[data-theme="dark"] .gg-hero-title h1 {
+  color: #f0f5ff;
+  text-shadow: 0 2px 18px rgba(8, 12, 26, 0.45);
+}
+.gg-app[data-theme="dark"] .gg-collection-heading {
+  background: radial-gradient(
+    ellipse at 18% 50%,
+    rgba(24, 34, 62, 0.42),
+    rgba(16, 22, 42, 0.08) 65%,
+    transparent 100%
+  );
+}
+.gg-app[data-theme="dark"] .gg-topbar {
+  background: rgba(15, 21, 38, calc(var(--gg-alpha) * 0.4 + 0.14));
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+.gg-app[data-theme="dark"] .gg-navigation a:hover,
+.gg-app[data-theme="dark"] .gg-sidebar-resources summary:hover,
+.gg-app[data-theme="dark"] .gg-sidebar-settings button:hover,
+.gg-app[data-theme="dark"] .gg-window-controls button:hover,
+.gg-app[data-theme="dark"] .gg-icon-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--gg-ink);
+}
+.gg-app[data-theme="dark"] .gg-navigation a.active {
+  background: rgba(var(--gg-primary-rgb), 0.2);
+  border-color: rgba(var(--gg-primary-rgb), 0.36);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.gg-app[data-theme="dark"] .gg-navigation a small,
+.gg-app[data-theme="dark"] .gg-shelf .gg-count,
+.gg-app[data-theme="dark"] .gg-update-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--gg-ink);
+}
+.gg-app[data-theme="dark"] .gg-command-search {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.gg-app[data-theme="dark"] .gg-command-search:focus-within {
+  background: rgba(25, 34, 58, 0.72);
+}
+.gg-app[data-theme="dark"] .gg-command-search kbd {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--gg-muted);
+}
+.gg-app[data-theme="dark"] .gg-secondary {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--gg-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.gg-app[data-theme="dark"] .gg-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+.gg-app[data-theme="dark"] .gg-primary {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #0e1627;
+}
+.gg-app[data-theme="dark"] .gg-shelf-controls,
+.gg-app[data-theme="dark"] .gg-shelf-footer,
+.gg-app[data-theme="dark"] .gg-sidebar-resources,
+.gg-app[data-theme="dark"] .gg-sidebar-foot,
+.gg-app[data-theme="dark"] .gg-tags-section,
+.gg-app[data-theme="dark"] .gg-video-edit,
+.gg-app[data-theme="dark"] .gg-game-path {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.gg-app[data-theme="dark"] .gg-filter-pills button.selected,
+.gg-app[data-theme="dark"] .gg-density-control button.selected,
+.gg-app[data-theme="dark"] .gg-view-toggle button.selected {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+.gg-app[data-theme="dark"] .gg-density-control,
+.gg-app[data-theme="dark"] .gg-view-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.gg-app[data-theme="dark"] .gg-sort select option {
+  background: #172036;
+  color: #eaf1fc;
+}
+.gg-app[data-theme="dark"] .gg-collection-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.gg-app[data-theme="dark"] .gg-collection-card:hover,
+.gg-app[data-theme="dark"] .gg-collection-card:focus-within {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow: 0 8px 26px rgba(4, 8, 20, 0.36);
+}
+.gg-app[data-theme="dark"] .gg-card-favorite {
+  background: rgba(18, 24, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #d9e5f8;
+}
+.gg-app[data-theme="dark"] .gg-card-favorite.is-favorite {
+  background: rgba(130, 52, 86, 0.72);
+  color: #ffd5e6;
+}
+.gg-app[data-theme="dark"] .gg-artwork-empty {
+  background: linear-gradient(
+    145deg,
+    hsl(var(--gg-art-hue-a, 212) 45% 24% / 0.92),
+    hsl(var(--gg-art-hue-b, 242) 42% 18% / 0.92)
+  );
+}
+.gg-app[data-theme="dark"] .gg-artwork-monogram {
+  color: rgba(255, 255, 255, 0.12);
+}
+.gg-app[data-theme="dark"] .gg-game-state.is-playing {
+  color: #8cc2ff;
+}
+.gg-app[data-theme="dark"] .gg-game-state.is-completed {
+  color: #82d9c2;
+}
+.gg-app[data-theme="dark"] .gg-spotlight-kicker > span,
+.gg-app[data-theme="dark"] .gg-hero-badges > span,
+.gg-app[data-theme="dark"] .gg-tags > span[data-kind="meta"] {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--gg-ink);
+}
+.gg-app[data-theme="dark"] .gg-tags > span[data-kind="story"] {
+  background: rgba(var(--gg-primary-rgb), 0.18);
+  border-color: rgba(var(--gg-primary-rgb), 0.34);
+  color: #eef4ff;
+}
+.gg-app[data-theme="dark"] .gg-game-navigation.has-compact {
+  background: rgba(17, 24, 43, calc(0.66 + var(--gg-alpha) * 0.26));
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.gg-app[data-theme="dark"] .gg-description {
+  background: rgba(14, 19, 34, var(--gg-content-alpha, 0));
+  text-shadow: none;
+}
+.gg-app[data-theme="dark"] .gg-cover-edit {
+  background: rgba(20, 28, 48, 0.85);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #eaf1fc;
+}
+.gg-app[data-theme="dark"] .gg-dropdown,
+.gg-app[data-theme="dark"] .gg-utility-menu,
+.gg-app[data-theme="dark"] .gg-toast {
+  background: rgba(20, 27, 46, 0.94);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #eaf1fc;
+}
+.gg-app[data-theme="dark"] .gg-utility-menu .gg-utility-item,
+.gg-app[data-theme="dark"] .gg-dropdown button {
+  color: #dbe6f7;
+}
+.gg-app[data-theme="dark"] .gg-utility-menu .gg-utility-item:hover:not(:disabled),
+.gg-app[data-theme="dark"] .gg-dropdown button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .gg-dialog {
+  --gg-ink: #eaf1fc;
+  --gg-muted: #a6b7d0;
+  --gg-light: #899cb9;
+  color: #eaf1fc;
+  background: rgba(20, 27, 46, 0.9);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 28px 96px rgba(2, 6, 16, 0.65);
+}
+:root[data-theme="dark"] .gg-dialog::backdrop {
+  background: rgba(5, 9, 18, 0.56);
+}
+:root[data-theme="dark"] .gg-dialog-heading,
+:root[data-theme="dark"] .gg-dialog-footer,
+:root[data-theme="dark"] .gg-material-personal,
+:root[data-theme="dark"] .gg-material-personal .gg-setting-row,
+:root[data-theme="dark"] .gg-scan-list,
+:root[data-theme="dark"] .gg-scan-item {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+:root[data-theme="dark"] .gg-dialog .gg-field input,
+:root[data-theme="dark"] .gg-assist-select select,
+:root[data-theme="dark"] .gg-modal-card,
+:root[data-theme="dark"] .gg-launch-summary,
+:root[data-theme="dark"] .gg-close-option-item,
+:root[data-theme="dark"] .gg-assist-box,
+:root[data-theme="dark"] .gg-notice-updates,
+:root[data-theme="dark"] .gg-appearance-note,
+:root[data-theme="dark"] .gg-source-results > button,
+:root[data-theme="dark"] .gg-match-meta span,
+:root[data-theme="dark"] .gg-material-options button,
+:root[data-theme="dark"] .gg-color-options button,
+:root[data-theme="dark"] .gg-theme-options button,
+:root[data-theme="dark"] .gg-file-drop {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #eaf1fc;
+}
+:root[data-theme="dark"] .gg-dialog .gg-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #eaf1fc;
+}
+:root[data-theme="dark"] .gg-dialog .gg-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+:root[data-theme="dark"] .gg-dialog .gg-primary {
+  color: #0e1627;
+}
+:root[data-theme="dark"] .gg-theme-options button.selected,
+:root[data-theme="dark"] .gg-color-options button.selected,
+:root[data-theme="dark"] .gg-material-options button[aria-pressed="true"] {
+  background: rgba(var(--gg-primary-rgb), 0.22);
+  border-color: rgba(var(--gg-primary-rgb), 0.56);
+  color: #ffffff;
+}
+:root[data-theme="dark"] .gg-dialog .gg-field input::placeholder {
+  color: #8295b2;
+}
+:root[data-theme="dark"] .gg-dialog .gg-assist-select select option {
+  background: #172036;
+  color: #eaf1fc;
+}
+:root[data-theme="dark"] .gg-modal-banner.is-error,
+:root[data-theme="dark"] .gg-form-error {
+  background: rgba(145, 42, 68, 0.28);
+  border-color: rgba(235, 128, 152, 0.38);
+  color: #ffb9c9;
+}
+:root[data-theme="dark"] .gg-modal-banner.is-running {
+  background: rgba(45, 118, 94, 0.28);
+  border-color: rgba(122, 224, 188, 0.36);
+  color: #b7f5de;
+}
+:root[data-theme="dark"] .gg-switch {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme="dark"] .gg-switch.on {
+  background: var(--gg-primary);
+  border-color: var(--gg-primary);
+}
+
+@media (max-width: 1100px) {
+  .gg-recent-showcase {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gg-film-panel {
+    position: static;
+  }
+  .gg-match-preview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Re-apply reduced motion after upgrade rules */
+@media (prefers-reduced-motion: reduce) {
+  .gg-app *,
+  .gg-app *::before,
+  .gg-app *::after,
+  .gg-dialog * {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
