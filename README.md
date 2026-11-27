@@ -371,9 +371,9 @@ StarryGal 标志由使用者原创提供，应用图标采用人物抱星图案�
 
 ## 投喂
 
-### WeChat Pay
+### WeChat
 
-<img src="./.github/assets/tip-wechat-qr.webp" alt="WeChat Pay 收款二维码" width="220" />
+<img src="./.github/assets/tip-wechat-qr.webp" alt="WeChat 赞赏码" width="220" />
 
 ### Alipay
 
